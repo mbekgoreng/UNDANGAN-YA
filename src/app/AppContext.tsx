@@ -43,6 +43,7 @@ export interface AppState {
 
 type Action =
   | { type: 'SET_PROJECT'; project: Project }
+  | { type: 'LOAD_PROJECT'; project: Project }
   | { type: 'UPDATE_PROJECT_META'; meta: Partial<Project['meta']> }
   | { type: 'SET_CANVAS'; canvas: Partial<Project['canvas']> }
   | { type: 'ADD_SCENE'; scene: Scene }
@@ -71,6 +72,19 @@ type Action =
 
 function projectReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
+    case 'LOAD_PROJECT': {
+      // Replace the whole project WITHOUT touching history or marking the
+      // project dirty — used when restoring a saved project at startup, so
+      // merely opening the app never writes anything to storage.
+      return {
+        ...state,
+        project: action.project,
+        history: { past: [], present: action.project, future: [] },
+        selectedSceneId: action.project.scenes[0]?.id ?? null,
+        selectedObjectIds: [],
+        saveStatus: 'saved',
+      };
+    }
     case 'UNDO': {
       if (state.history.past.length === 0) return state;
       const prev = state.history.past[state.history.past.length - 1];
@@ -300,7 +314,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     selectedObjectIds: [],
     activeTab: 'layers',
     assets: [],
-    saveStatus: 'unsaved',
+    // The bootstrap template is NOT dirty: opening the app must not autosave
+    // a fresh template copy on every visit (audit F-02). It becomes 'unsaved'
+    // only when the user actually modifies it.
+    saveStatus: 'saved',
     isPlaying: false,
     currentTime: 0,
     zoom: 1,

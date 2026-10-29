@@ -33,7 +33,7 @@ function buildKeyframeRule(preset: string, delay: number, duration: number): str
   return `@keyframes ${name} { from { ${p.from} } to { ${p.to} } }`;
 }
 
-function objectToCSS(obj: SceneObject, canvasW: number, canvasH: number): string {
+function objectToCSS(obj: SceneObject, canvasW: number, canvasH: number, extraTransform?: string): string {
   const anim = obj.animation;
   const hasAnim = anim.preset !== 'none';
   const easingCSS = anim.easing === 'easeOut' ? 'cubic-bezier(0,0,0.2,1)' :
@@ -48,12 +48,16 @@ function objectToCSS(obj: SceneObject, canvasW: number, canvasH: number): string
   const wPct = (obj.width / canvasW * 100).toFixed(3);
   const hPct = (obj.height / canvasH * 100).toFixed(3);
 
+  const transformParts: string[] = [];
+  if (obj.rotation !== 0) transformParts.push(`rotate(${obj.rotation}deg)`);
+  if (extraTransform) transformParts.push(extraTransform);
+
   const lines = [
     `position:absolute;`,
     `left:${xPct}%;top:${yPct}%;`,
     `width:${wPct}%;height:${hPct}%;`,
     `transform-origin:center center;`,
-    obj.rotation !== 0 ? `transform:rotate(${obj.rotation}deg);` : '',
+    transformParts.length ? `transform:${transformParts.join(' ')};` : '',
     `opacity:${obj.opacity};`,
   ];
 
@@ -67,14 +71,20 @@ function objectToCSS(obj: SceneObject, canvasW: number, canvasH: number): string
 }
 
 function renderObject(obj: SceneObject, assetFilenames: Map<string, string>, canvasW: number, canvasH: number): string {
-  const css = objectToCSS(obj, canvasW, canvasH);
-
   if (obj.type === 'image') {
     const imgObj = obj as ImageObject;
     const filename = assetFilenames.get(imgObj.assetId) ?? '';
-    const flipStyle = `${imgObj.flipX ? 'scaleX(-1)' : ''} ${imgObj.flipY ? 'scaleY(-1)' : ''}`.trim();
-    return `<img class="inv-obj" style="${css}" src="assets/${filename}" alt="${obj.name}" loading="lazy" ${flipStyle ? `data-flip="${flipStyle}"` : ''} />`;
+    // F-04: apply flip as a real CSS transform (composed with rotation in
+    // objectToCSS). The old `data-flip` attribute was never read by the
+    // exported runtime, so flipped images silently exported unflipped.
+    const flipParts: string[] = [];
+    if (imgObj.flipX) flipParts.push('scaleX(-1)');
+    if (imgObj.flipY) flipParts.push('scaleY(-1)');
+    const css = objectToCSS(obj, canvasW, canvasH, flipParts.length ? flipParts.join(' ') : undefined);
+    return `<img class="inv-obj" style="${css}" src="assets/${filename}" alt="${obj.name}" loading="lazy" />`;
   }
+
+  const css = objectToCSS(obj, canvasW, canvasH);
 
   if (obj.type === 'text') {
     const t = obj as TextObject;
@@ -247,7 +257,7 @@ ${Array.from(keyframeRules).join('\n')}
   <title>${meta.name.replace(/</g, '&lt;')}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
