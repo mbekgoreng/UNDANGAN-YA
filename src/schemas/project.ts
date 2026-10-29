@@ -23,16 +23,20 @@ export type AnimationPreset =
   | 'zoomIn'
   | 'softPop'
   | 'rotateIn'
+  | 'kenBurns'
   // Continuous
   | 'gentleFloat'
   | 'gentleSway'
   | 'slowPulse'
   | 'subtleRotation'
   | 'verticalDrift'
+  | 'flyAcross'
   // Exit
   | 'fadeOut'
   | 'slideOut'
   | 'zoomOut'
+  | 'slideOutLeft'
+  | 'slideOutRight'
   // None
   | 'none';
 

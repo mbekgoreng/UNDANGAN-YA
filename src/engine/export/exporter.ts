@@ -9,7 +9,7 @@ import { loadAssetBlob } from '../../storage/db';
 
 function buildKeyframeRule(preset: string, delay: number, duration: number): string {
   const name = `anim-${preset}-${Math.round(delay * 100)}-${Math.round(duration * 100)}`;
-  const animProps: Record<string, { from: string; to: string }> = {
+  const animProps: Record<string, { from: string; mid?: string; to: string }> = {
     fadeIn: { from: 'opacity:0', to: 'opacity:1' },
     slideUp: { from: 'opacity:0;transform:translateY(50px)', to: 'opacity:1;transform:translateY(0)' },
     slideDown: { from: 'opacity:0;transform:translateY(-50px)', to: 'opacity:1;transform:translateY(0)' },
@@ -18,19 +18,28 @@ function buildKeyframeRule(preset: string, delay: number, duration: number): str
     zoomIn: { from: 'opacity:0;transform:scale(0.6)', to: 'opacity:1;transform:scale(1)' },
     softPop: { from: 'opacity:0;transform:scale(0.85)', to: 'opacity:1;transform:scale(1)' },
     rotateIn: { from: 'opacity:0;transform:rotate(-18deg) scale(0.8)', to: 'opacity:1;transform:rotate(0) scale(1)' },
+    kenBurns: { from: 'transform:scale(1)', to: 'transform:scale(1.15)' },
     fadeOut: { from: 'opacity:1', to: 'opacity:0' },
     slideOut: { from: 'opacity:1;transform:translateY(0)', to: 'opacity:0;transform:translateY(-50px)' },
     zoomOut: { from: 'opacity:1;transform:scale(1)', to: 'opacity:0;transform:scale(0.6)' },
+    slideOutLeft: { from: 'opacity:1;transform:translateX(0)', to: 'opacity:0;transform:translateX(-280px)' },
+    slideOutRight: { from: 'opacity:1;transform:translateX(0)', to: 'opacity:0;transform:translateX(280px)' },
     gentleFloat: { from: 'transform:translateY(0)', to: 'transform:translateY(-8px)' },
     gentleSway: { from: 'transform:rotate(-4deg)', to: 'transform:rotate(4deg)' },
     slowPulse: { from: 'transform:scale(1)', to: 'transform:scale(1.05)' },
     subtleRotation: { from: 'transform:rotate(0deg)', to: 'transform:rotate(360deg)' },
     verticalDrift: { from: 'transform:translate(0,0)', to: 'transform:translate(4px,-10px)' },
+    flyAcross: {
+      from: 'transform:translate(-140px,0)',
+      mid: 'transform:translate(200px,-14px)',
+      to: 'transform:translate(540px,0)',
+    },
   };
 
   const p = animProps[preset];
   if (!p) return '';
-  return `@keyframes ${name} { from { ${p.from} } to { ${p.to} } }`;
+  const mid = p.mid ? ` 50% { ${p.mid} }` : '';
+  return `@keyframes ${name} { from { ${p.from} }${mid} to { ${p.to} } }`;
 }
 
 function sanitizeCubicBezier(value?: string): string | null {

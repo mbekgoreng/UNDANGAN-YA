@@ -62,6 +62,9 @@ export function getEndState(preset: AnimationPreset, distance = 60): AnimatedSta
     case 'fadeOut': return { ...IDENTITY, opacity: 0 };
     case 'slideOut': return { ...IDENTITY, opacity: 0, translateY: -distance };
     case 'zoomOut': return { ...IDENTITY, opacity: 0, scaleX: 0.5, scaleY: 0.5 };
+    // Wide exits for foreground layers parting sideways (e.g. trees)
+    case 'slideOutLeft': return { ...IDENTITY, opacity: 0, translateX: -280 };
+    case 'slideOutRight': return { ...IDENTITY, opacity: 0, translateX: 280 };
     default: return { ...IDENTITY };
   }
 }
@@ -115,12 +118,16 @@ export function computeAnimatedState(
   const easedT = applyEasing(t, easing);
 
   // Entrance presets
-  if (['fadeIn','slideUp','slideDown','slideLeft','slideRight','zoomIn','softPop','rotateIn'].includes(preset)) {
+  if (['fadeIn','slideUp','slideDown','slideLeft','slideRight','zoomIn','softPop','rotateIn','kenBurns'].includes(preset)) {
     const start = getStartState(preset);
-    const end = { ...IDENTITY, opacity: objectOpacity };
+    const end = preset === 'kenBurns'
+      ? { ...IDENTITY, opacity: objectOpacity, scaleX: 1.15, scaleY: 1.15 }
+      : { ...IDENTITY, opacity: objectOpacity };
 
-    // Before animation starts
-    if (currentTime < effectiveStart) return { ...start, opacity: 0 };
+    // Before animation starts (kenBurns backgrounds stay visible)
+    if (currentTime < effectiveStart) {
+      return preset === 'kenBurns' ? { ...start, opacity: objectOpacity } : { ...start, opacity: 0 };
+    }
     // After animation ends
     if (!loop && currentTime >= effectiveEnd) return end;
 
@@ -135,7 +142,7 @@ export function computeAnimatedState(
   }
 
   // Exit presets
-  if (['fadeOut','slideOut','zoomOut'].includes(preset)) {
+  if (['fadeOut','slideOut','zoomOut','slideOutLeft','slideOutRight'].includes(preset)) {
     const start = { ...IDENTITY, opacity: objectOpacity };
     const end = getEndState(preset);
     if (currentTime < effectiveStart) return start;
@@ -147,6 +154,21 @@ export function computeAnimatedState(
       scaleX: lerp(start.scaleX, end.scaleX, easedT),
       scaleY: lerp(start.scaleY, end.scaleY, easedT),
       rotate: lerp(start.rotate, end.rotate, easedT),
+    };
+  }
+
+  // Fly across — travels left→right across the canvas with a gentle
+  // vertical wobble (butterflies, birds). Loops when loop is on; otherwise
+  // flies once and stays off-canvas.
+  if (preset === 'flyAcross') {
+    const rel = currentTime - effectiveStart;
+    if (rel < 0) return { ...IDENTITY, opacity: 0 };
+    const p = loop ? ((rel % (duration || 1)) / (duration || 1)) : Math.min(1, rel / (duration || 1));
+    return {
+      ...IDENTITY,
+      opacity: objectOpacity,
+      translateX: -140 + p * 680,
+      translateY: Math.sin(p * Math.PI * 4) * 12,
     };
   }
 
@@ -175,15 +197,15 @@ export function computeAnimatedState(
 export const ANIMATION_PRESET_GROUPS = [
   {
     label: 'Entrance',
-    presets: ['fadeIn','slideUp','slideDown','slideLeft','slideRight','zoomIn','softPop','rotateIn'] as AnimationPreset[],
+    presets: ['fadeIn','slideUp','slideDown','slideLeft','slideRight','zoomIn','softPop','rotateIn','kenBurns'] as AnimationPreset[],
   },
   {
     label: 'Continuous',
-    presets: ['gentleFloat','gentleSway','slowPulse','subtleRotation','verticalDrift'] as AnimationPreset[],
+    presets: ['gentleFloat','gentleSway','slowPulse','subtleRotation','verticalDrift','flyAcross'] as AnimationPreset[],
   },
   {
     label: 'Exit',
-    presets: ['fadeOut','slideOut','zoomOut'] as AnimationPreset[],
+    presets: ['fadeOut','slideOut','zoomOut','slideOutLeft','slideOutRight'] as AnimationPreset[],
   },
 ];
 
@@ -197,12 +219,16 @@ export const PRESET_LABELS: Record<AnimationPreset, string> = {
   zoomIn: 'Zoom In',
   softPop: 'Soft Pop',
   rotateIn: 'Rotate In',
+  kenBurns: 'Zoom Pelan (Ken Burns)',
   gentleFloat: 'Gentle Float',
   gentleSway: 'Gentle Sway',
   slowPulse: 'Slow Pulse',
   subtleRotation: 'Subtle Rotation',
   verticalDrift: 'Vertical Drift',
+  flyAcross: 'Terbang Melintas',
   fadeOut: 'Fade Out',
   slideOut: 'Slide Out',
   zoomOut: 'Zoom Out',
+  slideOutLeft: 'Geser Keluar Kiri',
+  slideOutRight: 'Geser Keluar Kanan',
 };
