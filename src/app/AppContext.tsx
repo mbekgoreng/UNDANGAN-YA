@@ -12,6 +12,9 @@ import type {
   Scene,
   SceneObject,
   AssetItem,
+  EventInfo,
+  MusicSettings,
+  ExportConfig,
 } from '../schemas/project';
 import { buildTemplateProject } from '../engine/scene/templateFactory';
 
@@ -39,6 +42,7 @@ export interface AppState {
   showPreview: boolean;
   showExportDialog: boolean;
   showProjectManager: boolean;
+  showEventPanel: boolean;
 }
 
 type Action =
@@ -46,6 +50,10 @@ type Action =
   | { type: 'LOAD_PROJECT'; project: Project }
   | { type: 'UPDATE_PROJECT_META'; meta: Partial<Project['meta']> }
   | { type: 'SET_CANVAS'; canvas: Partial<Project['canvas']> }
+  | { type: 'SET_EVENT_INFO'; event: Partial<EventInfo> }
+  | { type: 'SET_MUSIC'; music: MusicSettings }
+  | { type: 'SET_EXPORT_CONFIG'; exportConfig: Partial<ExportConfig> }
+  | { type: 'UPDATE_OBJECTS_BATCH'; sceneId: string; updates: Record<string, Partial<SceneObject>> }
   | { type: 'ADD_SCENE'; scene: Scene }
   | { type: 'UPDATE_SCENE'; sceneId: string; updates: Partial<Scene> }
   | { type: 'DELETE_SCENE'; sceneId: string }
@@ -56,6 +64,7 @@ type Action =
   | { type: 'REORDER_OBJECTS'; sceneId: string; objects: SceneObject[] }
   | { type: 'SELECT_SCENE'; sceneId: string | null }
   | { type: 'SELECT_OBJECT'; objectId: string | null }
+  | { type: 'SELECT_OBJECTS'; objectIds: string[] }
   | { type: 'SET_ACTIVE_TAB'; tab: AppState['activeTab'] }
   | { type: 'SET_ASSETS'; assets: AssetItem[] }
   | { type: 'ADD_ASSET'; asset: AssetItem }
@@ -67,6 +76,7 @@ type Action =
   | { type: 'TOGGLE_PREVIEW'; show?: boolean }
   | { type: 'TOGGLE_EXPORT_DIALOG'; show?: boolean }
   | { type: 'TOGGLE_PROJECT_MANAGER'; show?: boolean }
+  | { type: 'TOGGLE_EVENT_PANEL'; show?: boolean }
   | { type: 'UNDO' }
   | { type: 'REDO' };
 
@@ -120,6 +130,7 @@ function projectReducer(state: AppState, action: Action): AppState {
   // For all project-modifying actions, push current to past
   const modifiesProject = [
     'SET_PROJECT','UPDATE_PROJECT_META','SET_CANVAS',
+    'SET_EVENT_INFO','SET_MUSIC','SET_EXPORT_CONFIG','UPDATE_OBJECTS_BATCH',
     'ADD_SCENE','UPDATE_SCENE','DELETE_SCENE','REORDER_SCENES',
     'ADD_OBJECT','UPDATE_OBJECT','DELETE_OBJECT','REORDER_OBJECTS',
   ].includes(action.type);
@@ -143,6 +154,44 @@ function projectReducer(state: AppState, action: Action): AppState {
         meta: { ...state.project.meta, updatedAt: new Date().toISOString() },
       };
       break;
+    case 'SET_EVENT_INFO':
+      newProject = {
+        ...state.project,
+        event: { ...(state.project.event ?? { dateISO: '', venueName: '', venueAddress: '', mapsUrl: '', rsvpWhatsapp: '', giftAccounts: [] }), ...action.event },
+        meta: { ...state.project.meta, updatedAt: new Date().toISOString() },
+      };
+      break;
+    case 'SET_MUSIC':
+      newProject = {
+        ...state.project,
+        music: action.music,
+        meta: { ...state.project.meta, updatedAt: new Date().toISOString() },
+      };
+      break;
+    case 'SET_EXPORT_CONFIG':
+      newProject = {
+        ...state.project,
+        exportConfig: { ...state.project.exportConfig, ...action.exportConfig },
+        meta: { ...state.project.meta, updatedAt: new Date().toISOString() },
+      };
+      break;
+    case 'UPDATE_OBJECTS_BATCH': {
+      newProject = {
+        ...state.project,
+        scenes: state.project.scenes.map(s =>
+          s.id === action.sceneId
+            ? {
+                ...s,
+                objects: s.objects.map(o =>
+                  action.updates[o.id] ? { ...o, ...action.updates[o.id] } as SceneObject : o
+                ),
+              }
+            : s
+        ),
+        meta: { ...state.project.meta, updatedAt: new Date().toISOString() },
+      };
+      break;
+    }
     case 'ADD_SCENE':
       newProject = {
         ...state.project,
@@ -245,6 +294,9 @@ function projectReducer(state: AppState, action: Action): AppState {
     case 'SELECT_OBJECT':
       extra = { selectedObjectIds: action.objectId ? [action.objectId] : [] };
       break;
+    case 'SELECT_OBJECTS':
+      extra = { selectedObjectIds: action.objectIds };
+      break;
     case 'SET_ACTIVE_TAB':
       extra = { activeTab: action.tab };
       break;
@@ -277,6 +329,9 @@ function projectReducer(state: AppState, action: Action): AppState {
       break;
     case 'TOGGLE_PROJECT_MANAGER':
       extra = { showProjectManager: action.show !== undefined ? action.show : !state.showProjectManager };
+      break;
+    case 'TOGGLE_EVENT_PANEL':
+      extra = { showEventPanel: action.show !== undefined ? action.show : !state.showEventPanel };
       break;
     default:
       break;
@@ -324,6 +379,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     showPreview: false,
     showExportDialog: false,
     showProjectManager: false,
+    showEventPanel: false,
   };
 
   const [state, dispatch] = useReducer(projectReducer, initialState);

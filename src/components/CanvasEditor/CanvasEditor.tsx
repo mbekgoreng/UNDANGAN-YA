@@ -29,20 +29,25 @@ interface ActiveGuides {
 interface CanvasObjectProps {
   object: SceneObject;
   isSelected: boolean;
+  showHandles: boolean;
+  selectedPeers: { id: string; x: number; y: number }[];
   scale: number;
   canvasWidth: number;
   canvasHeight: number;
   enableSnapping: boolean;
   isPlaying: boolean;
   currentTime: number;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, additive: boolean) => void;
   onUpdate: (id: string, updates: Partial<SceneObject>) => void;
+  onUpdateBatch: (updates: Record<string, Partial<SceneObject>>) => void;
   onGuideChange: (guides: ActiveGuides) => void;
 }
 
 function CanvasObjectRenderer({
   object,
   isSelected,
+  showHandles,
+  selectedPeers,
   scale,
   canvasWidth,
   canvasHeight,
@@ -51,13 +56,14 @@ function CanvasObjectRenderer({
   currentTime,
   onSelect,
   onUpdate,
+  onUpdateBatch,
   onGuideChange,
 }: CanvasObjectProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isInlineEditing, setIsInlineEditing] = useState(false);
   const [editingText, setEditingText] = useState('');
 
-  const dragRef = useRef<{ startX: number; startY: number; objX: number; objY: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; objX: number; objY: number; peers: { id: string; x: number; y: number }[] } | null>(null);
   const resizeRef = useRef<{ handle: string; startX: number; startY: number; startW: number; startH: number; startObjX: number; startObjY: number } | null>(null);
   const elRef = useRef<HTMLDivElement>(null);
   const inlineInputRef = useRef<HTMLTextAreaElement>(null);
@@ -97,21 +103,22 @@ function CanvasObjectRenderer({
   const sy = animState ? animState.scaleY : 1;
   const rot = animState ? (object.rotation + animState.rotate) : object.rotation;
 
-  // Drag interaction with snapping
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  // Drag interaction with snapping (Pointer Events: mouse + touch + pen)
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (object.locked || isPlaying || isInlineEditing) return;
-    if (e.button !== 0) return; // only left click
+    if (e.pointerType === 'mouse' && e.button !== 0) return; // only left click
     e.stopPropagation();
-    onSelect(object.id);
+    onSelect(object.id, e.shiftKey);
 
     dragRef.current = {
       startX: e.clientX,
       startY: e.clientY,
       objX: object.x,
       objY: object.y,
+      peers: selectedPeers,
     };
 
-    const onMove = (me: MouseEvent) => {
+    const onMove = (me: PointerEvent) => {
       if (!dragRef.current) return;
       const dx = (me.clientX - dragRef.current.startX) / scale;
       const dy = (me.clientY - dragRef.current.startY) / scale;
@@ -154,22 +161,34 @@ function CanvasObjectRenderer({
       }
 
       onGuideChange({ x: guideX, y: guideY });
-      onUpdate(object.id, { x: newX, y: newY });
+      const peers = dragRef.current.peers;
+      if (peers.length > 0) {
+        const updates: Record<string, Partial<SceneObject>> = { [object.id]: { x: newX, y: newY } };
+        for (const p of peers) {
+          updates[p.id] = {
+            x: Math.round(p.x + (newX - dragRef.current.objX)),
+            y: Math.round(p.y + (newY - dragRef.current.objY)),
+          };
+        }
+        onUpdateBatch(updates);
+      } else {
+        onUpdate(object.id, { x: newX, y: newY });
+      }
     };
 
     const onUp = () => {
       dragRef.current = null;
       onGuideChange({ x: null, y: null });
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
     };
 
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }, [object, scale, isPlaying, isInlineEditing, enableSnapping, canvasWidth, canvasHeight, onSelect, onUpdate, onGuideChange]);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, [object, scale, isPlaying, isInlineEditing, enableSnapping, canvasWidth, canvasHeight, onSelect, onUpdate, onUpdateBatch, onGuideChange, selectedPeers]);
 
   // Resize interaction
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent, handle: string) => {
+  const handleResizePointerDown = useCallback((e: React.PointerEvent, handle: string) => {
     if (object.locked || isPlaying || isInlineEditing) return;
     e.stopPropagation();
     e.preventDefault();
@@ -184,7 +203,7 @@ function CanvasObjectRenderer({
       startObjY: object.y,
     };
 
-    const onMove = (me: MouseEvent) => {
+    const onMove = (me: PointerEvent) => {
       if (!resizeRef.current) return;
       const dx = (me.clientX - resizeRef.current.startX) / scale;
       const dy = (me.clientY - resizeRef.current.startY) / scale;
@@ -205,16 +224,16 @@ function CanvasObjectRenderer({
 
     const onUp = () => {
       resizeRef.current = null;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
     };
 
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   }, [object, scale, isPlaying, isInlineEditing, onUpdate]);
 
   // Rotate interaction
-  const handleRotateMouseDown = useCallback((e: React.MouseEvent) => {
+  const handleRotatePointerDown = useCallback((e: React.PointerEvent) => {
     if (object.locked || isPlaying || isInlineEditing) return;
     e.stopPropagation();
     e.preventDefault();
@@ -225,16 +244,16 @@ function CanvasObjectRenderer({
     const cy = rect.top + rect.height / 2;
     const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI) - object.rotation;
 
-    const onMove = (me: MouseEvent) => {
+    const onMove = (me: PointerEvent) => {
       const angle = Math.atan2(me.clientY - cy, me.clientX - cx) * (180 / Math.PI) - startAngle;
       onUpdate(object.id, { rotation: Math.round(angle) });
     };
     const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
     };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   }, [object, isPlaying, isInlineEditing, onUpdate]);
 
   // Double click for text editing
@@ -264,6 +283,7 @@ function CanvasObjectRenderer({
     cursor: object.locked ? 'default' : isInlineEditing ? 'text' : 'move',
     userSelect: isInlineEditing ? 'text' : 'none',
     pointerEvents: isPlaying ? 'none' : 'auto',
+    touchAction: 'none',
   };
 
   // Render object content
@@ -348,7 +368,7 @@ function CanvasObjectRenderer({
           justifyContent: t.textAlign === 'center' ? 'center' : t.textAlign === 'right' ? 'flex-end' : 'flex-start',
         }}
       >
-        {t.text}
+        {t.text.split('{nama}').join('Nama Tamu').split('{tamu}').join('Nama Tamu')}
       </div>
     );
   } else if (object.type === 'shape') {
@@ -393,13 +413,24 @@ function CanvasObjectRenderer({
     <div
       ref={elRef}
       style={style}
-      onMouseDown={handleMouseDown}
+      onPointerDown={handlePointerDown}
       onDoubleClick={handleDoubleClick}
     >
       {content}
 
+      {/* Selection border for multi-selected objects (no handles) */}
+      {isSelected && !showHandles && !isPlaying && !isInlineEditing && (
+        <div style={{
+          position: 'absolute', inset: -2,
+          border: '2px solid var(--accent)',
+          opacity: 0.55,
+          pointerEvents: 'none',
+          borderRadius: 1,
+        }} />
+      )}
+
       {/* Selection UI */}
-      {isSelected && !isPlaying && !isInlineEditing && (
+      {showHandles && !isPlaying && !isInlineEditing && (
         <>
           <div style={{
             position: 'absolute', inset: -2,
@@ -421,7 +452,7 @@ function CanvasObjectRenderer({
                 zIndex: 10,
                 ...handlePositions[h],
               }}
-              onMouseDown={e => handleResizeMouseDown(e, h)}
+              onPointerDown={e => handleResizePointerDown(e, h)}
             />
           ))}
 
@@ -439,7 +470,7 @@ function CanvasObjectRenderer({
               cursor: 'grab',
               zIndex: 10,
             }}
-            onMouseDown={handleRotateMouseDown}
+            onPointerDown={handleRotatePointerDown}
             title="Rotate"
           />
           <div style={{
@@ -471,6 +502,12 @@ export function CanvasEditor() {
   const [activeGuides, setActiveGuides] = useState<ActiveGuides>({ x: null, y: null });
 
   const panStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+
+  const [bgImageUrl, setBgImageUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!selectedScene?.backgroundAssetId) { setBgImageUrl(null); return; }
+    getImageUrl(selectedScene.backgroundAssetId).then(setBgImageUrl);
+  }, [selectedScene?.backgroundAssetId]);
 
   const canvasW = canvas.width * zoom;
   const canvasH = canvas.height * zoom;
@@ -505,13 +542,13 @@ export function CanvasEditor() {
   }, []);
 
   // Canvas Pan handler (Space+drag or middle mouse click)
-  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+  const handleCanvasPointerDown = useCallback((e: React.PointerEvent) => {
     if (e.button === 1 || (e.button === 0 && isSpacePressed)) {
       e.preventDefault();
       setIsPanning(true);
       panStart.current = { x: e.clientX, y: e.clientY, ox: panOffset.x, oy: panOffset.y };
 
-      const onMove = (me: MouseEvent) => {
+      const onMove = (me: PointerEvent) => {
         if (!panStart.current) return;
         setPanOffset({
           x: panStart.current.ox + (me.clientX - panStart.current.x),
@@ -521,11 +558,11 @@ export function CanvasEditor() {
       const onUp = () => {
         setIsPanning(false);
         panStart.current = null;
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
       };
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
       return;
     }
 
@@ -552,6 +589,10 @@ export function CanvasEditor() {
     if (!assetId) return;
     const asset = state.assets.find(a => a.id === assetId);
     if (!asset) return;
+    if (asset.mimeType.startsWith('audio/')) {
+      dispatch({ type: 'SET_MUSIC', music: { assetId: asset.id, fileName: asset.name } });
+      return;
+    }
 
     const containerRect = containerRef.current?.getBoundingClientRect();
     if (!containerRect) return;
@@ -624,13 +665,33 @@ export function CanvasEditor() {
     return () => el.removeEventListener('wheel', handler);
   }, [zoom, dispatch]);
 
-  const handleSelect = useCallback((id: string) => {
-    dispatch({ type: 'SELECT_OBJECT', objectId: id });
-  }, [dispatch]);
+  const handleSelect = useCallback((id: string, additive = false) => {
+    const obj = selectedScene?.objects.find(o => o.id === id);
+    // Clicking any member of a group selects the whole group
+    let ids = [id];
+    if (obj?.groupId && selectedScene) {
+      ids = selectedScene.objects.filter(o => o.groupId === obj.groupId).map(o => o.id);
+    }
+    if (additive) {
+      const cur = selectedObjectIds;
+      const allIn = ids.every(x => cur.includes(x));
+      const next = allIn ? cur.filter(x => !ids.includes(x)) : [...new Set([...cur, ...ids])];
+      dispatch({ type: 'SELECT_OBJECTS', objectIds: next });
+    } else if (!(ids.length === 1 && selectedObjectIds.length > 1 && selectedObjectIds.includes(id))) {
+      // Plain click on a member of an existing multi-selection keeps the
+      // selection (so the group can be dragged); otherwise replace it.
+      dispatch({ type: 'SELECT_OBJECTS', objectIds: ids });
+    }
+  }, [dispatch, selectedScene, selectedObjectIds]);
 
   const handleUpdate = useCallback((id: string, updates: Partial<SceneObject>) => {
     if (!selectedSceneId) return;
     dispatch({ type: 'UPDATE_OBJECT', sceneId: selectedSceneId, objectId: id, updates });
+  }, [selectedSceneId, dispatch]);
+
+  const handleUpdateBatch = useCallback((updates: Record<string, Partial<SceneObject>>) => {
+    if (!selectedSceneId) return;
+    dispatch({ type: 'UPDATE_OBJECTS_BATCH', sceneId: selectedSceneId, updates });
   }, [selectedSceneId, dispatch]);
 
   // Add text helper
@@ -703,9 +764,10 @@ export function CanvasEditor() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        touchAction: 'none',
         cursor: isSpacePressed ? (isPanning ? 'grabbing' : 'grab') : 'default',
       }}
-      onMouseDown={handleCanvasMouseDown}
+      onPointerDown={handleCanvasPointerDown}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
@@ -756,6 +818,9 @@ export function CanvasEditor() {
           width: canvasW,
           height: canvasH,
           background: selectedScene?.backgroundColor ?? canvas.backgroundColor,
+          backgroundImage: bgImageUrl ? `url(${bgImageUrl})` : undefined,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
           position: 'relative',
           overflow: 'hidden',
           flexShrink: 0,
@@ -794,22 +859,30 @@ export function CanvasEditor() {
         )}
 
         {/* Objects */}
-        {objects.map(obj => (
-          <CanvasObjectRenderer
-            key={obj.id}
-            object={obj}
-            isSelected={selectedId === obj.id}
-            scale={zoom}
-            canvasWidth={canvas.width}
-            canvasHeight={canvas.height}
-            enableSnapping={enableSnapping}
-            isPlaying={isPlaying}
-            currentTime={currentTime}
-            onSelect={handleSelect}
-            onUpdate={handleUpdate}
-            onGuideChange={setActiveGuides}
-          />
-        ))}
+        {objects.map(obj => {
+          const peerPool = obj.groupId
+            ? objects.filter(o => o.groupId === obj.groupId)
+            : objects.filter(o => selectedObjectIds.includes(o.id));
+          return (
+            <CanvasObjectRenderer
+              key={obj.id}
+              object={obj}
+              isSelected={selectedObjectIds.includes(obj.id)}
+              showHandles={selectedObjectIds.length === 1 && selectedObjectIds[0] === obj.id}
+              selectedPeers={peerPool.filter(o => o.id !== obj.id).map(o => ({ id: o.id, x: o.x, y: o.y }))}
+              scale={zoom}
+              canvasWidth={canvas.width}
+              canvasHeight={canvas.height}
+              enableSnapping={enableSnapping}
+              isPlaying={isPlaying}
+              currentTime={currentTime}
+              onSelect={handleSelect}
+              onUpdate={handleUpdate}
+              onUpdateBatch={handleUpdateBatch}
+              onGuideChange={setActiveGuides}
+            />
+          );
+        })}
       </div>
 
       {/* Canvas size & hints badge */}

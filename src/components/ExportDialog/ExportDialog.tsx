@@ -3,13 +3,26 @@
 // ============================================================
 import React, { useState } from 'react';
 import { useApp } from '../../app/AppContext';
-import { exportInvitationZip, exportInvitationDirectory } from '../../engine/export/exporter';
+import { exportInvitationZip, exportInvitationDirectory, exportSingleFileHtml } from '../../engine/export/exporter';
 import { IconClose, IconExport, IconFolder } from '../Icons';
 
 export function ExportDialog() {
   const { state, dispatch } = useApp();
   const [exportingZip, setExportingZip] = useState(false);
   const [exportingDir, setExportingDir] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+
+  const handlePublish = async () => {
+    setPublishing(true);
+    try {
+      await exportSingleFileHtml(state.project);
+    } catch (err) {
+      console.error('Publish failed:', err);
+      alert('Gagal membuat file publish: ' + (err as Error).message);
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   const handleExportZip = async () => {
     setExportingZip(true);
@@ -68,15 +81,50 @@ export function ExportDialog() {
             <div><strong style={{ color: 'var(--text-primary)' }}>Dimensi:</strong> {state.project.canvas.width} × {state.project.canvas.height} px</div>
             <div><strong style={{ color: 'var(--text-primary)' }}>Aset Terpakai:</strong> {state.assets.length} file</div>
           </div>
+
+          <div style={{ marginTop: 12, display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-secondary)' }}>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={state.project.exportConfig?.includeAnimations !== false}
+                onChange={e => dispatch({ type: 'SET_EXPORT_CONFIG', exportConfig: { includeAnimations: e.target.checked } })}
+              />
+              Sertakan animasi &amp; kelopak
+            </label>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={state.project.exportConfig?.minify === true}
+                onChange={e => dispatch({ type: 'SET_EXPORT_CONFIG', exportConfig: { minify: e.target.checked } })}
+              />
+              Minify hasil ekspor
+            </label>
+          </div>
+
+          <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'var(--text-primary)' }}>Publish 1 File HTML:</strong> seluruh website
+            (gaya, animasi, gambar, QRIS &amp; musik) digabung menjadi SATU file .html mandiri —
+            bisa langsung dibuka, dibagikan, atau diunggah ke hosting mana pun tanpa folder aset.
+          </div>
         </div>
 
         <div className="modal-footer" style={{ gap: 8 }}>
           <button className="btn btn-secondary" onClick={close}>Batal</button>
-          
+
+          <button
+            className="btn btn-secondary"
+            onClick={handlePublish}
+            disabled={publishing || exportingZip || exportingDir}
+            title="Satu file HTML mandiri, siap dibuka/dibagikan/diunggah"
+          >
+            <IconExport size={12} />
+            {publishing ? 'Menyiapkan…' : 'Publish 1 File HTML'}
+          </button>
+
           <button
             className="btn btn-secondary"
             onClick={handleExportDir}
-            disabled={exportingDir || exportingZip}
+            disabled={exportingDir || exportingZip || publishing}
             title="Pilih folder di komputermu (Chrome/Edge)"
           >
             <IconFolder size={12} />

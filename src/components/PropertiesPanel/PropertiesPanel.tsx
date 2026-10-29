@@ -340,9 +340,22 @@ function AnimationProperties({ obj, onUpdate }: { obj: SceneObject; onUpdate: (u
                 <option value="easeIn">Ease In</option>
                 <option value="easeOut">Ease Out (Elegance)</option>
                 <option value="easeInOut">Ease In/Out</option>
-                <option value="cubicBezier">Cubic Smooth</option>
+                <option value="cubicBezier">Cubic Bezier Kustom</option>
               </select>
             </div>
+
+            {anim.easing === 'cubicBezier' && (
+              <div className="inspector-row">
+                <label className="inspector-label">Kurva Bezier</label>
+                <input
+                  type="text"
+                  className="inspector-input"
+                  placeholder="0.34,1.3,0.64,1"
+                  defaultValue={anim.cubicBezier ?? '0.34,1.3,0.64,1'}
+                  onBlur={e => updateAnim({ cubicBezier: e.target.value.trim() || '0.34,1.3,0.64,1' })}
+                />
+              </div>
+            )}
 
             <div className="inspector-row">
               <label className="inspector-label">Ulang (Loop)</label>
@@ -362,6 +375,8 @@ function AnimationProperties({ obj, onUpdate }: { obj: SceneObject; onUpdate: (u
 
 // ---- Scene properties ----
 function SceneProperties({ scene, onUpdate }: { scene: Scene; onUpdate: (u: Partial<Scene>) => void }) {
+  const { state } = useApp();
+  const imageAssets = state.assets.filter(a => a.mimeType.startsWith('image/'));
   return (
     <div className="panel-section">
       <div className="panel-section-header">Pengaturan Scene</div>
@@ -395,6 +410,19 @@ function SceneProperties({ scene, onUpdate }: { scene: Scene; onUpdate: (u: Part
           </select>
         </div>
         <ColorInput label="Warna BG" value={scene.backgroundColor} onChange={v => onUpdate({ backgroundColor: v })} />
+        <div className="inspector-row">
+          <label className="inspector-label">Gambar BG</label>
+          <select
+            className="inspector-select"
+            value={scene.backgroundAssetId ?? ''}
+            onChange={e => onUpdate({ backgroundAssetId: e.target.value || undefined })}
+          >
+            <option value="">— Tanpa gambar —</option>
+            {imageAssets.map(a => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
     </div>
   );
@@ -463,6 +491,90 @@ function CanvasProperties() {
   );
 }
 
+// ---- Multi-selection: align, distribute, group ----
+function MultiSelectPanel() {
+  const { state, dispatch, selectedScene } = useApp();
+  const { selectedSceneId, selectedObjectIds } = state;
+  const objs = (selectedScene?.objects ?? []).filter(o => selectedObjectIds.includes(o.id));
+
+  if (!selectedSceneId || objs.length < 2) return null;
+
+  const apply = (updates: Record<string, Partial<SceneObject>>) =>
+    dispatch({ type: 'UPDATE_OBJECTS_BATCH', sceneId: selectedSceneId, updates });
+
+  const align = (mode: 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom') => {
+    const minX = Math.min(...objs.map(o => o.x));
+    const maxX = Math.max(...objs.map(o => o.x + o.width));
+    const minY = Math.min(...objs.map(o => o.y));
+    const maxY = Math.max(...objs.map(o => o.y + o.height));
+    const updates: Record<string, Partial<SceneObject>> = {};
+    for (const o of objs) {
+      if (mode === 'left') updates[o.id] = { x: minX };
+      if (mode === 'right') updates[o.id] = { x: Math.round(maxX - o.width) };
+      if (mode === 'hcenter') updates[o.id] = { x: Math.round((minX + maxX) / 2 - o.width / 2) };
+      if (mode === 'top') updates[o.id] = { y: minY };
+      if (mode === 'bottom') updates[o.id] = { y: Math.round(maxY - o.height) };
+      if (mode === 'vcenter') updates[o.id] = { y: Math.round((minY + maxY) / 2 - o.height / 2) };
+    }
+    apply(updates);
+  };
+
+  const distribute = (axis: 'h' | 'v') => {
+    if (objs.length < 3) return;
+    const sorted = [...objs].sort((a, b) => axis === 'h' ? (a.x + a.width / 2) - (b.x + b.width / 2) : (a.y + a.height / 2) - (b.y + b.height / 2));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const startC = axis === 'h' ? first.x + first.width / 2 : first.y + first.height / 2;
+    const endC = axis === 'h' ? last.x + last.width / 2 : last.y + last.height / 2;
+    const step = (endC - startC) / (sorted.length - 1);
+    const updates: Record<string, Partial<SceneObject>> = {};
+    sorted.forEach((o, i) => {
+      const c = startC + step * i;
+      updates[o.id] = axis === 'h' ? { x: Math.round(c - o.width / 2) } : { y: Math.round(c - o.height / 2) };
+    });
+    apply(updates);
+  };
+
+  const group = () => {
+    const gid = crypto.randomUUID();
+    const updates: Record<string, Partial<SceneObject>> = {};
+    for (const o of objs) updates[o.id] = { groupId: gid };
+    apply(updates);
+  };
+  const ungroup = () => {
+    const updates: Record<string, Partial<SceneObject>> = {};
+    for (const o of objs) updates[o.id] = { groupId: undefined };
+    apply(updates);
+  };
+  const grouped = objs.some(o => o.groupId);
+
+  const btnRow = (label: string, items: [string, () => void][]) => (
+    <div className="inspector-row" key={label}>
+      <label className="inspector-label">{label}</label>
+      <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+        {items.map(([t, fn]) => (
+          <button key={t} className="btn btn-ghost btn-sm" style={{ fontSize: 9, padding: '2px 7px', height: 22 }} onClick={fn}>{t}</button>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="panel-section">
+      <div className="panel-section-header">{objs.length} Objek Terpilih</div>
+      <div className="panel-section-body">
+        {btnRow('Rata H', [['Kiri', () => align('left')], ['Tengah', () => align('hcenter')], ['Kanan', () => align('right')]])}
+        {btnRow('Rata V', [['Atas', () => align('top')], ['Tengah', () => align('vcenter')], ['Bawah', () => align('bottom')]])}
+        {objs.length >= 3 && btnRow('Sebar', [['Horizontal', () => distribute('h')], ['Vertikal', () => distribute('v')]])}
+        {btnRow('Grup', grouped ? [['Batal Grup', ungroup]] : [['Jadikan Grup', group]])}
+        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+          Shift+klik untuk menambah pilihan. Objek satu grup selalu terpilih &amp; bergerak bersama.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---- Main Inspector ----
 export function PropertiesPanel() {
   const { state, dispatch, selectedScene, selectedObject } = useApp();
@@ -525,7 +637,9 @@ export function PropertiesPanel() {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {selectedObject ? (
+        {state.selectedObjectIds.length > 1 ? (
+          <MultiSelectPanel />
+        ) : selectedObject ? (
           <>
             <div className="panel-section">
               <div className="panel-section-body">

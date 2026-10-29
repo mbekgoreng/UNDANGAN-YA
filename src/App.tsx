@@ -14,6 +14,7 @@ import { Timeline } from './components/Timeline/Timeline';
 import { PreviewMode } from './components/Preview/PreviewMode';
 import { ExportDialog } from './components/ExportDialog/ExportDialog';
 import { ProjectManager } from './components/ProjectManager/ProjectManager';
+import { EventPanel } from './components/EventPanel/EventPanel';
 import './styles/global.css';
 
 const LAST_PROJECT_KEY = 'undangya-last-project-id';
@@ -79,6 +80,7 @@ function Studio() {
       {state.showPreview && <PreviewMode />}
       {state.showExportDialog && <ExportDialog />}
       {state.showProjectManager && <ProjectManager />}
+      {state.showEventPanel && <EventPanel />}
     </>
   );
 }

@@ -19,6 +19,22 @@ async function cachedUrl(id: string) {
   return u ?? null;
 }
 
+function SceneBgImage({ assetId }: { assetId?: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!assetId) { setUrl(null); return; }
+    cachedUrl(assetId).then(setUrl);
+  }, [assetId]);
+  if (!url) return null;
+  return (
+    <img
+      src={url}
+      alt=""
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
+    />
+  );
+}
+
 interface PreviewObjectProps {
   object: SceneObject;
   currentTime: number;
@@ -94,7 +110,7 @@ function PreviewObject({ object, currentTime, sceneStartTime, scale, isScrollVie
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
       }}>
-        {t.text}
+        {t.text.split('{nama}').join('Nama Tamu').split('{tamu}').join('Nama Tamu')}
       </div>
     );
   }
@@ -334,6 +350,7 @@ export function PreviewMode() {
                   borderBottom: '1px solid rgba(255,255,255,0.05)',
                 }}
               >
+                <SceneBgImage assetId={scene.backgroundAssetId} />
                 {[...scene.objects]
                   .sort((a, b) => a.zIndex - b.zIndex)
                   .map(obj => (
@@ -375,6 +392,7 @@ export function PreviewMode() {
                 />
               )}
 
+              <SceneBgImage assetId={currentScene?.backgroundAssetId} />
               {currentScene && [...currentScene.objects]
                 .sort((a, b) => a.zIndex - b.zIndex)
                 .map(obj => (

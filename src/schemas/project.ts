@@ -41,6 +41,7 @@ export interface AnimationConfig {
   duration: number;   // seconds
   delay: number;      // seconds
   easing: EasingType;
+  cubicBezier?: string; // "x1,y1,x2,y2" — used when easing === 'cubicBezier'
   loop: boolean;
   startTime: number;  // in timeline (seconds)
   endTime: number;    // in timeline (seconds)
@@ -59,6 +60,7 @@ export interface BaseObject {
   visible: boolean;
   locked: boolean;
   zIndex: number;
+  groupId?: string; // objects sharing a groupId are selected/moved together
   animation: AnimationConfig;
 }
 
@@ -133,11 +135,44 @@ export interface ProjectMeta {
   author?: string;
 }
 
+export interface GiftAccount {
+  id: string;
+  label: string;   // e.g. "BCA", "DANA", "OVO"
+  number: string;  // account / phone number
+  holder: string;  // account holder name
+}
+
+export interface EventInfo {
+  dateISO: string;        // local datetime "2027-02-20T08:00" or ''
+  venueName: string;
+  venueAddress: string;
+  mapsUrl: string;
+  rsvpWhatsapp: string;   // digits only, international format e.g. "62812..."
+  giftAccounts: GiftAccount[];
+  qrisAssetId?: string;   // AssetItem.id of QRIS image
+}
+
+export interface MusicSettings {
+  assetId?: string;       // AssetItem.id of the audio file
+  fileName?: string;
+}
+
+export const DEFAULT_EVENT_INFO: EventInfo = {
+  dateISO: '',
+  venueName: '',
+  venueAddress: '',
+  mapsUrl: '',
+  rsvpWhatsapp: '',
+  giftAccounts: [],
+};
+
 export interface Project {
   meta: ProjectMeta;
   canvas: CanvasSettings;
   scenes: Scene[];
   exportConfig: ExportConfig;
+  event: EventInfo;
+  music: MusicSettings;
 }
 
 // Asset catalog stored separately from project JSON
@@ -152,7 +187,8 @@ export type AssetCategory =
   | 'textures'
   | 'misc'
   | 'photos'
-  | 'fonts';
+  | 'fonts'
+  | 'audio';
 
 export interface AssetItem {
   id: string;
@@ -218,5 +254,7 @@ export function createDefaultProject(name = 'Untitled Invitation'): Project {
       minify: true,
       includeAnimations: true,
     },
+    event: { ...DEFAULT_EVENT_INFO, giftAccounts: [] },
+    music: {},
   };
 }

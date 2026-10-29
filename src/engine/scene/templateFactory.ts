@@ -155,7 +155,7 @@ export function buildJavaneseGoldTemplate(): Scene[] {
         fill: '#9a9590',
         animation: { preset: 'fadeIn', duration: 0.8, delay: 1.1, easing: 'easeOut', loop: false, startTime: 0, endTime: 0.8 },
       }),
-      createText('Tamu Nama', 'Tamu Undangan', 45, 545, 300, 30, 16, {
+      createText('Tamu Nama', '{nama}', 45, 545, 300, 30, 16, {
         fill: '#e2d3af',
         fontWeight: 'bold',
         animation: { preset: 'fadeIn', duration: 0.8, delay: 1.3, easing: 'easeOut', loop: false, startTime: 0, endTime: 0.8 },
@@ -324,11 +324,117 @@ export function buildJavaneseGoldTemplate(): Scene[] {
   return [s1, s2, s3, s4, s5, s6];
 }
 
+// ---- Non-wedding celebration templates (birthday, khitanan, aqiqah) ----
+interface CelebrationConfig {
+  bg: string;
+  accent: string;
+  soft: string;
+  tagline: string;
+  heroTitle: string;
+  heroName: string;
+  dateText: string;
+  detailLines: string[];
+  closingText: string;
+  familyLine: string;
+}
+
+function buildCelebrationTemplate(cfg: CelebrationConfig): Scene[] {
+  const fade = (delay: number) => ({ preset: 'fadeIn' as const, duration: 0.8, delay, easing: 'easeOut' as const, loop: false, startTime: 0, endTime: 0.8 });
+
+  const s1: Scene = createDefaultScene({
+    name: '1. Opening Envelope',
+    backgroundColor: cfg.bg,
+    duration: 5,
+    objects: [
+      createShape('Card Border', 'rect', 20, 30, 350, 784, 'rgba(255,255,255,0.02)', cfg.accent, 1, 8),
+      createImage('Botanical Arch', 'sample-floral-arch', 55, 70, 280, 380, 'softPop'),
+      createText('Tagline', cfg.tagline, 45, 470, 300, 24, 11, { fill: cfg.accent, letterSpacing: 3, fontWeight: 'bold', animation: fade(0.5) }),
+      createText('Hero Name', cfg.heroName, 35, 505, 320, 56, 34, { fill: cfg.soft, animation: { preset: 'slideUp', duration: 1, delay: 0.8, easing: 'easeOut', loop: false, startTime: 0, endTime: 1 } }),
+      createText('Tamu Label', 'Kepada Yth. Bapak/Ibu/Saudara/i', 45, 600, 300, 24, 11, { fill: '#9a9590', animation: fade(1.1) }),
+      createText('Tamu Nama', '{nama}', 45, 625, 300, 30, 16, { fill: cfg.soft, fontWeight: 'bold', animation: fade(1.3) }),
+      createShape('Button Buka Undangan BG', 'rect', 105, 690, 180, 44, cfg.accent, 'transparent', 0, 22),
+      createText('Button Buka Undangan Text', '✉ Buka Undangan', 105, 700, 180, 24, 12, { fill: '#1a1917', fontWeight: 'bold', letterSpacing: 1, animation: { preset: 'slowPulse', duration: 2, delay: 1.5, easing: 'easeInOut', loop: true, startTime: 0, endTime: 2 } }),
+    ],
+  });
+
+  const s2: Scene = createDefaultScene({
+    name: '2. Sambutan',
+    backgroundColor: cfg.bg,
+    duration: 5,
+    objects: [
+      createText('Hero Title', cfg.heroTitle, 35, 90, 320, 90, 30, { fill: cfg.soft, lineHeight: 1.35, animation: { preset: 'slideUp', duration: 1, delay: 0.3, easing: 'easeOut', loop: false, startTime: 0, endTime: 1 } }),
+      createImage('Gold Divider', 'sample-gold-divider', 45, 200, 300, 40, 'fadeIn'),
+      createText('Date', cfg.dateText, 45, 260, 300, 30, 14, { fill: cfg.accent, letterSpacing: 2, fontWeight: 'bold', animation: fade(0.8) }),
+      createText('Intro', 'Dengan memohon rahmat dan ridha Allah SWT, kami mengundang Bapak/Ibu/Saudara/i untuk hadir dan memberikan doa terbaik.', 45, 330, 300, 90, 13, { fill: '#c9c4bb', lineHeight: 1.6, animation: fade(1) }),
+    ],
+  });
+
+  const s3: Scene = createDefaultScene({
+    name: '3. Detail Acara',
+    backgroundColor: cfg.bg,
+    duration: 5,
+    objects: [
+      createText('Detail Title', 'WAKTU & TEMPAT', 45, 90, 300, 30, 15, { fill: cfg.accent, letterSpacing: 3, fontWeight: 'bold', animation: fade(0.3) }),
+      ...cfg.detailLines.map((line, i) => createText(`Detail ${i + 1}`, line, 45, 150 + i * 56, 300, 44, 14, { fill: cfg.soft, lineHeight: 1.5, animation: fade(0.5 + i * 0.2) })),
+      createText('Note', 'Hitung mundur, peta lokasi, RSVP, dan amplop digital tampil otomatis dari menu Acara & Musik.', 45, 560, 300, 60, 11, { fill: '#9a9590', lineHeight: 1.5, animation: fade(1.2) }),
+    ],
+  });
+
+  const s4: Scene = createDefaultScene({
+    name: '4. Penutup',
+    backgroundColor: cfg.bg,
+    duration: 5,
+    objects: [
+      createText('Closing', cfg.closingText, 45, 200, 300, 120, 13, { fill: '#c9c4bb', lineHeight: 1.7, animation: fade(0.3) }),
+      createText('Thanks', 'Terima Kasih', 35, 360, 320, 50, 30, { fill: cfg.soft, animation: { preset: 'slideUp', duration: 1, delay: 0.6, easing: 'easeOut', loop: false, startTime: 0, endTime: 1 } }),
+      createText('Family', cfg.familyLine, 45, 430, 300, 30, 12, { fill: cfg.accent, animation: fade(0.9) }),
+    ],
+  });
+
+  return [s1, s2, s3, s4];
+}
+
+const CELEBRATION_TEMPLATES: Record<string, CelebrationConfig> = {
+  'birthday-sweet': {
+    bg: '#221334', accent: '#e8a2c8', soft: '#fdf3e7',
+    tagline: 'UNDANGAN ULANG TAHUN',
+    heroTitle: 'Sweet Seventeen\nAlesha Putri',
+    heroName: 'Alesha Putri',
+    dateText: 'SABTU, 20 MARET 2027',
+    detailLines: ['Sabtu, 20 Maret 2027', 'Pukul 16.00 WIB — selesai', 'The Garden Hall, Jakarta Selatan', 'Dresscode: pastel & putih'],
+    closingText: 'Merupakan suatu kehormatan dan kebahagiaan bagi kami sekeluarga apabila Bapak/Ibu/Saudara/i berkenan hadir untuk merayakan hari istimewa putri kami.',
+    familyLine: 'Keluarga Besar Alesha Putri',
+  },
+  'khitanan-teal': {
+    bg: '#0b2536', accent: '#7fd4c1', soft: '#eef7f2',
+    tagline: 'WALIMATUL KHITAN',
+    heroTitle: 'Khitanan\nRaffasya Alfarezi',
+    heroName: 'Raffasya Alfarezi',
+    dateText: 'MINGGU, 11 APRIL 2027',
+    detailLines: ['Minggu, 11 April 2027', 'Pukul 09.00 WIB — selesai', 'Kediaman Bapak Hendra, Jakarta Timur', 'Dilanjutkan ramah tamah & hiburan'],
+    closingText: 'Semoga ananda menjadi anak yang saleh, berbakti kepada orang tua, serta berguna bagi agama, bangsa, dan negara. Aamiin.',
+    familyLine: 'Keluarga Bapak Hendra & Ibu Ratna',
+  },
+  'aqiqah-cream': {
+    bg: '#2b1d16', accent: '#e8c39e', soft: '#fdf6ec',
+    tagline: 'TASYAKURAN AQIQAH',
+    heroTitle: 'Aqiqah\nAruna Sekar Ayu',
+    heroName: 'Aruna Sekar Ayu',
+    dateText: 'SABTU, 8 MEI 2027',
+    detailLines: ['Sabtu, 8 Mei 2027', 'Pukul 10.00 WIB — selesai', 'Kediaman kami, Depok', 'Dresscode: putih & krem'],
+    closingText: 'Puji syukur ke hadirat Allah SWT atas kelahiran putri kami. Kami mengundang Bapak/Ibu/Saudara/i untuk hadir memberikan doa pada tasyakuran aqiqah ananda.',
+    familyLine: 'Keluarga Bapak Dimas & Ibu Ayu',
+  },
+};
+
 export function buildTemplateProject(templateId: string, name: string): Project {
   let scenes: Scene[] = [];
   let bgColor = '#161922';
 
-  if (templateId === 'javanese-gold' || templateId === 'luxury-wedding') {
+  if (CELEBRATION_TEMPLATES[templateId]) {
+    scenes = buildCelebrationTemplate(CELEBRATION_TEMPLATES[templateId]);
+    bgColor = CELEBRATION_TEMPLATES[templateId].bg;
+  } else if (templateId === 'javanese-gold' || templateId === 'luxury-wedding') {
     scenes = buildJavaneseGoldTemplate();
     bgColor = '#161922';
   } else if (templateId === 'emerald-botanical') {
@@ -367,5 +473,7 @@ export function buildTemplateProject(templateId: string, name: string): Project 
       minify: true,
       includeAnimations: true,
     },
+    event: { dateISO: '', venueName: '', venueAddress: '', mapsUrl: '', rsvpWhatsapp: '', giftAccounts: [] },
+    music: {},
   };
 }

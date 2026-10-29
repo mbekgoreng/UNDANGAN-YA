@@ -153,10 +153,11 @@ export function Toolbar() {
         Export
       </button>
 
-      {/* Settings */}
+      {/* Event, music & gifts */}
       <button
         className="btn btn-ghost btn-icon"
-        data-tip="Settings"
+        onClick={() => dispatch({ type: 'TOGGLE_EVENT_PANEL' })}
+        data-tip="Acara, Musik & Amplop"
       >
         <IconGear size={14} />
       </button>

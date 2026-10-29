@@ -33,12 +33,20 @@ function buildKeyframeRule(preset: string, delay: number, duration: number): str
   return `@keyframes ${name} { from { ${p.from} } to { ${p.to} } }`;
 }
 
-function objectToCSS(obj: SceneObject, canvasW: number, canvasH: number, extraTransform?: string): string {
+function sanitizeCubicBezier(value?: string): string | null {
+  if (!value) return null;
+  const parts = value.split(',').map(s => parseFloat(s.trim()));
+  if (parts.length !== 4 || parts.some(n => !Number.isFinite(n))) return null;
+  return `cubic-bezier(${parts.join(',')})`;
+}
+
+function objectToCSS(obj: SceneObject, canvasW: number, canvasH: number, extraTransform?: string, includeAnimations = true): string {
   const anim = obj.animation;
-  const hasAnim = anim.preset !== 'none';
-  const easingCSS = anim.easing === 'easeOut' ? 'cubic-bezier(0,0,0.2,1)' :
+  const hasAnim = includeAnimations && anim.preset !== 'none';
+  const easingCSS = (anim.easing === 'cubicBezier' && sanitizeCubicBezier(anim.cubicBezier)) || (
+    anim.easing === 'easeOut' ? 'cubic-bezier(0,0,0.2,1)' :
     anim.easing === 'easeIn' ? 'cubic-bezier(0.4,0,1,1)' :
-    anim.easing === 'easeInOut' ? 'cubic-bezier(0.4,0,0.2,1)' : 'linear';
+    anim.easing === 'easeInOut' ? 'cubic-bezier(0.4,0,0.2,1)' : 'linear');
 
   const isContinuous = ['gentleFloat','gentleSway','slowPulse','subtleRotation','verticalDrift'].includes(anim.preset);
   const animIterations = (hasAnim && (anim.loop || isContinuous)) ? 'infinite' : '1';
@@ -70,7 +78,7 @@ function objectToCSS(obj: SceneObject, canvasW: number, canvasH: number, extraTr
   return lines.filter(Boolean).join('');
 }
 
-function renderObject(obj: SceneObject, assetFilenames: Map<string, string>, canvasW: number, canvasH: number): string {
+function renderObject(obj: SceneObject, assetFilenames: Map<string, string>, canvasW: number, canvasH: number, includeAnimations = true): string {
   if (obj.type === 'image') {
     const imgObj = obj as ImageObject;
     const filename = assetFilenames.get(imgObj.assetId) ?? '';
@@ -80,11 +88,11 @@ function renderObject(obj: SceneObject, assetFilenames: Map<string, string>, can
     const flipParts: string[] = [];
     if (imgObj.flipX) flipParts.push('scaleX(-1)');
     if (imgObj.flipY) flipParts.push('scaleY(-1)');
-    const css = objectToCSS(obj, canvasW, canvasH, flipParts.length ? flipParts.join(' ') : undefined);
+    const css = objectToCSS(obj, canvasW, canvasH, flipParts.length ? flipParts.join(' ') : undefined, includeAnimations);
     return `<img class="inv-obj" style="${css}" src="assets/${filename}" alt="${obj.name}" loading="lazy" />`;
   }
 
-  const css = objectToCSS(obj, canvasW, canvasH);
+  const css = objectToCSS(obj, canvasW, canvasH, undefined, includeAnimations);
 
   if (obj.type === 'text') {
     const t = obj as TextObject;
@@ -104,7 +112,8 @@ function renderObject(obj: SceneObject, assetFilenames: Map<string, string>, can
       isButton ? 'cursor:pointer;' : '',
     ].join('');
     const text = t.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    return `<div class="inv-obj ${isButton ? 'btn-buka-undangan' : ''}" style="${css}${textCSS}">${text}</div>`;
+    const hasGuestToken = /\{nama\}|\{tamu\}/.test(t.text);
+    return `<div class="inv-obj ${isButton ? 'btn-buka-undangan' : ''}"${hasGuestToken ? ' data-guest="1"' : ''} style="${css}${textCSS}">${text}</div>`;
   }
 
   if (obj.type === 'shape') {
@@ -130,18 +139,135 @@ export interface PreparedExportData {
   assetBlobs: Map<string, Blob>;
   assetFilenames: Map<string, string>;
   projectName: string;
+  musicFilename?: string;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function formatEventDateId(dateISO: string): string {
+  const d = new Date(dateISO);
+  if (Number.isNaN(d.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat('id-ID', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    }).format(d);
+  } catch {
+    return d.toLocaleString();
+  }
+}
+
+// Functional sections appended after the designed scenes: countdown, event
+// details (maps + calendar), RSVP via WhatsApp, and digital envelope (amplop).
+function buildEventSections(project: Project, assetFilenames: Map<string, string>): string {
+  const ev = project.event ?? { dateISO: '', venueName: '', venueAddress: '', mapsUrl: '', rsvpWhatsapp: '', giftAccounts: [] };
+  const hasCountdown = !!ev.dateISO;
+  const hasDetail = !!(ev.dateISO || ev.venueName || ev.venueAddress || ev.mapsUrl);
+  const hasRsvp = !!ev.rsvpWhatsapp;
+  const qrisFile = ev.qrisAssetId ? assetFilenames.get(ev.qrisAssetId) : undefined;
+  const hasAmplop = (ev.giftAccounts?.length ?? 0) > 0 || !!qrisFile;
+  if (!hasCountdown && !hasDetail && !hasRsvp && !hasAmplop) return '';
+
+  const parts: string[] = [];
+
+  if (hasCountdown || hasDetail) {
+    parts.push(`<section class="func-section" id="acara">
+      <h2 class="func-title">Waktu &amp; Tempat</h2>
+      ${ev.dateISO ? `<div class="func-date">${escapeHtml(formatEventDateId(ev.dateISO))} WIB</div>` : ''}
+      ${ev.venueName ? `<div class="func-venue">${escapeHtml(ev.venueName)}</div>` : ''}
+      ${ev.venueAddress ? `<div class="func-address">${escapeHtml(ev.venueAddress)}</div>` : ''}
+      ${hasCountdown ? `<div class="countdown" data-countdown="${escapeHtml(ev.dateISO)}">
+        <div class="cd-box"><span class="cd-num" data-cd="d">0</span><span class="cd-label">Hari</span></div>
+        <div class="cd-box"><span class="cd-num" data-cd="h">0</span><span class="cd-label">Jam</span></div>
+        <div class="cd-box"><span class="cd-num" data-cd="m">0</span><span class="cd-label">Menit</span></div>
+        <div class="cd-box"><span class="cd-num" data-cd="s">0</span><span class="cd-label">Detik</span></div>
+      </div>` : ''}
+      <div class="func-actions">
+        ${ev.mapsUrl ? `<a class="func-btn" href="${escapeHtml(ev.mapsUrl)}" target="_blank" rel="noopener">📍 Buka Google Maps</a>` : ''}
+        ${ev.dateISO ? `<button class="func-btn" id="btn-calendar" type="button">🗓 Simpan ke Kalender</button>` : ''}
+      </div>
+    </section>`);
+  }
+
+  if (hasRsvp) {
+    parts.push(`<section class="func-section" id="rsvp">
+      <h2 class="func-title">Konfirmasi Kehadiran</h2>
+      <div class="rsvp-form">
+        <input class="func-input" id="rsvp-name" type="text" placeholder="Nama Anda" />
+        <select class="func-input" id="rsvp-attend">
+          <option value="Hadir">Saya akan hadir</option>
+          <option value="Belum pasti">Belum pasti</option>
+          <option value="Berhalangan">Berhalangan hadir</option>
+        </select>
+        <textarea class="func-input" id="rsvp-msg" rows="3" placeholder="Ucapan &amp; doa (opsional)"></textarea>
+        <button class="func-btn func-btn-primary" id="btn-rsvp" type="button" data-wa="${escapeHtml(ev.rsvpWhatsapp.replace(/[^0-9]/g, ''))}">Kirim via WhatsApp</button>
+      </div>
+    </section>`);
+  }
+
+  if (hasAmplop) {
+    const accounts = (ev.giftAccounts ?? []).map(a => `
+        <div class="amplop-card">
+          <div class="amplop-bank">${escapeHtml(a.label)}</div>
+          <div class="amplop-number">${escapeHtml(a.number)}</div>
+          <div class="amplop-holder">a.n. ${escapeHtml(a.holder)}</div>
+          <button class="func-btn" type="button" data-copy="${escapeHtml(a.number)}">Salin Nomor</button>
+        </div>`).join('');
+    parts.push(`<section class="func-section" id="amplop">
+      <h2 class="func-title">Amplop Digital</h2>
+      <div class="func-address">Kehadiran Anda adalah hadiah terindah. Namun bila ingin memberi tanda kasih, kami sediakan:</div>
+      ${accounts}
+      ${qrisFile ? `<div class="amplop-card"><div class="amplop-bank">QRIS</div><img class="qris-img" src="assets/${qrisFile}" alt="QRIS" loading="lazy" /></div>` : ''}
+    </section>`);
+  }
+
+  return parts.join('\n');
+}
+
+function minifyCss(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{}:;,>])\s*/g, '$1').trim();
+}
+
+function minifyHtml(html: string): string {
+  return html.replace(/<!--[\s\S]*?-->/g, '').replace(/>\s+</g, '><').replace(/\n\s*\n/g, '\n').trim();
+}
+
+function minifyJs(js: string): string {
+  return js.split('\n').filter(line => {
+    const t = line.trim();
+    return t !== '' && !t.startsWith('//');
+  }).join('\n');
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  const buf = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return `data:${blob.type || 'application/octet-stream'};base64,${btoa(binary)}`;
 }
 
 export async function prepareExportData(project: Project): Promise<PreparedExportData> {
   const { canvas, scenes, meta } = project;
+  const includeAnimations = project.exportConfig?.includeAnimations !== false;
+  const doMinify = project.exportConfig?.minify === true;
+  const eventInfo = project.event ?? { dateISO: '', venueName: '', venueAddress: '', mapsUrl: '', rsvpWhatsapp: '', giftAccounts: [] };
+  const musicInfo = project.music ?? {};
 
-  // Collect all asset IDs used in scenes
+  // Collect all asset IDs used in scenes (objects + scene backgrounds + QRIS)
   const usedAssetIds = new Set<string>();
   for (const scene of scenes) {
+    if (scene.backgroundAssetId) usedAssetIds.add(scene.backgroundAssetId);
     for (const obj of scene.objects) {
       if (obj.type === 'image') usedAssetIds.add((obj as ImageObject).assetId);
     }
   }
+  if (eventInfo.qrisAssetId) usedAssetIds.add(eventInfo.qrisAssetId);
 
   const assetFilenames = new Map<string, string>();
   const assetBlobs = new Map<string, Blob>();
@@ -157,12 +283,28 @@ export async function prepareExportData(project: Project): Promise<PreparedExpor
     assetBlobs.set(id, blob);
   }
 
+  // Background music (stored as its own asset so ZIP/folder/single-file agree)
+  let musicFilename: string | undefined;
+  if (musicInfo.assetId) {
+    const blob = await loadAssetBlob(musicInfo.assetId);
+    if (blob) {
+      const ext = blob.type.includes('mpeg') || blob.type.includes('mp3') ? 'mp3' :
+        blob.type.includes('ogg') ? 'ogg' :
+        blob.type.includes('wav') ? 'wav' : 'm4a';
+      musicFilename = `music.${ext}`;
+      assetBlobs.set(musicInfo.assetId, blob);
+      assetFilenames.set(musicInfo.assetId, musicFilename);
+    }
+  }
+
   // Keyframes
   const keyframeRules = new Set<string>();
-  for (const scene of scenes) {
-    for (const obj of scene.objects) {
-      if (obj.animation.preset !== 'none') {
-        keyframeRules.add(buildKeyframeRule(obj.animation.preset, obj.animation.delay, obj.animation.duration));
+  if (includeAnimations) {
+    for (const scene of scenes) {
+      for (const obj of scene.objects) {
+        if (obj.animation.preset !== 'none') {
+          keyframeRules.add(buildKeyframeRule(obj.animation.preset, obj.animation.delay, obj.animation.duration));
+        }
       }
     }
   }
@@ -231,6 +373,101 @@ body {
 .scene-visible .inv-obj {
   animation-play-state: running !important;
 }
+/* Scene transitions */
+.scene.trans-fade {
+  transition: opacity 0.9s ease, transform 0.9s ease;
+}
+.scene.trans-fade.scene-hidden {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.scene.trans-fade.scene-visible {
+  opacity: 1;
+  transform: none;
+}
+/* Functional sections (countdown, RSVP, amplop) */
+.func-section {
+  position: relative;
+  width: 100%;
+  padding: 56px 28px;
+  text-align: center;
+  background: #101014;
+  border-top: 1px solid rgba(201,168,76,0.25);
+}
+.func-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  font-weight: 600;
+  color: #e8cf8f;
+  margin-bottom: 14px;
+}
+.func-date { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.func-venue { font-size: 15px; color: #e8cf8f; margin-bottom: 4px; }
+.func-address { font-size: 13px; color: rgba(240,236,228,0.75); line-height: 1.6; margin-bottom: 12px; }
+.countdown { display: flex; justify-content: center; gap: 8px; margin: 18px 0 6px; }
+.cd-box {
+  background: rgba(201,168,76,0.12);
+  border: 1px solid rgba(201,168,76,0.4);
+  border-radius: 8px;
+  min-width: 62px;
+  padding: 8px 4px;
+  display: flex; flex-direction: column;
+}
+.cd-num { font-size: 22px; font-weight: 700; color: #e8cf8f; }
+.cd-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: rgba(240,236,228,0.7); }
+.func-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+.func-btn {
+  display: inline-block;
+  background: transparent;
+  border: 1px solid #c9a84c;
+  color: #e8cf8f;
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+.func-btn-primary { background: #c9a84c; color: #141414; font-weight: 700; }
+.rsvp-form { display: flex; flex-direction: column; gap: 10px; max-width: 320px; margin: 0 auto; }
+.func-input {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(201,168,76,0.35);
+  border-radius: 8px;
+  color: #f0ece4;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  width: 100%;
+}
+.func-input option { color: #141414; }
+.amplop-card {
+  background: rgba(201,168,76,0.08);
+  border: 1px solid rgba(201,168,76,0.35);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 12px auto;
+  max-width: 320px;
+  display: flex; flex-direction: column; gap: 6px; align-items: center;
+}
+.amplop-bank { font-weight: 700; color: #e8cf8f; letter-spacing: 1px; }
+.amplop-number { font-size: 18px; font-weight: 600; letter-spacing: 1px; }
+.amplop-holder { font-size: 12px; color: rgba(240,236,228,0.7); }
+.qris-img { max-width: 220px; width: 100%; border-radius: 8px; background: #fff; }
+/* Music toggle */
+#music-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: 1px solid #c9a84c;
+  background: rgba(16,16,20,0.85);
+  color: #e8cf8f;
+  font-size: 18px;
+  cursor: pointer;
+}
 ${Array.from(keyframeRules).join('\n')}
 `;
 
@@ -239,15 +476,26 @@ ${Array.from(keyframeRules).join('\n')}
     const objectsHTML = [...scene.objects]
       .filter(o => o.visible)
       .sort((a, b) => a.zIndex - b.zIndex)
-      .map(obj => renderObject(obj, assetFilenames, canvas.width, canvas.height))
+      .map(obj => renderObject(obj, assetFilenames, canvas.width, canvas.height, includeAnimations))
       .join('\n      ');
 
+    const bgFile = scene.backgroundAssetId ? assetFilenames.get(scene.backgroundAssetId) : undefined;
+    const bgStyle = bgFile
+      ? `background:${scene.backgroundColor} url('assets/${bgFile}') center/cover no-repeat;`
+      : `background:${scene.backgroundColor};`;
+    const initiallyHidden = scene.transition === 'fade';
+
     return `
-    <!-- Scene: ${scene.name} -->
-    <section class="scene scene-hidden" id="scene-${idx}" style="background:${scene.backgroundColor};">
+    <!-- Scene: ${escapeHtml(scene.name)} -->
+    <section class="scene trans-${scene.transition} ${initiallyHidden ? 'scene-hidden' : 'scene-visible'}" id="scene-${idx}" style="${bgStyle}">
       ${objectsHTML}
     </section>`;
   }).join('\n');
+
+  const eventSections = buildEventSections(project, assetFilenames);
+  const musicHTML = musicFilename
+    ? `\n  <audio id="bg-music" loop preload="auto" src="assets/${musicFilename}"></audio>\n  <button id="music-toggle" type="button" title="Musik nyala/matikan" style="display:none;">♪</button>`
+    : '';
 
   const html = `<!DOCTYPE html>
 <html lang="id">
@@ -261,10 +509,11 @@ ${Array.from(keyframeRules).join('\n')}
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <canvas id="petals-canvas"></canvas>
+  ${includeAnimations ? '<canvas id="petals-canvas"></canvas>' : ''}
   <main class="inv-wrapper">
 ${scenesHTML}
-  </main>
+${eventSections}
+  </main>${musicHTML}
   <script src="invitation.js"></script>
 </body>
 </html>`;
@@ -369,8 +618,113 @@ ${scenesHTML}
       cvs.height = h;
     });
   }
+
+  // 4. Guest name personalization: ?to=Nama+Tamu replaces {nama}/{tamu} tokens
+  var guestName = '';
+  try {
+    guestName = new URLSearchParams(window.location.search).get('to') || '';
+  } catch (e) { guestName = ''; }
+  var guestDisplay = guestName.trim() !== '' ? guestName : 'Tamu Undangan';
+  document.querySelectorAll('[data-guest]').forEach(function(el) {
+    el.textContent = el.textContent.split('{nama}').join(guestDisplay).split('{tamu}').join(guestDisplay);
+  });
+  var rsvpNameInput = document.getElementById('rsvp-name');
+  if (rsvpNameInput && guestName.trim() !== '') rsvpNameInput.value = guestName;
+
+  // 5. Countdown
+  var cdEl = document.querySelector('[data-countdown]');
+  if (cdEl) {
+    var target = new Date(cdEl.getAttribute('data-countdown')).getTime();
+    var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+    var tickCd = function() {
+      var diff = Math.max(0, target - Date.now());
+      var d = Math.floor(diff / 86400000);
+      var h = Math.floor(diff % 86400000 / 3600000);
+      var m = Math.floor(diff % 3600000 / 60000);
+      var s = Math.floor(diff % 60000 / 1000);
+      var map = { d: d, h: pad(h), m: pad(m), s: pad(s) };
+      cdEl.querySelectorAll('[data-cd]').forEach(function(span) {
+        span.textContent = map[span.getAttribute('data-cd')];
+      });
+    };
+    tickCd();
+    setInterval(tickCd, 1000);
+  }
+
+  // 6. Add to calendar (.ics download)
+  var calBtn = document.getElementById('btn-calendar');
+  if (calBtn && cdEl) {
+    calBtn.addEventListener('click', function() {
+      var start = new Date(cdEl.getAttribute('data-countdown'));
+      var end = new Date(start.getTime() + 2 * 3600000);
+      var fmt = function(dt) { return dt.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; };
+      var ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT',
+        'DTSTART:' + fmt(start), 'DTEND:' + fmt(end),
+        'SUMMARY:' + document.title,
+        'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+      var blob = new Blob([ics], { type: 'text/calendar' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'acara.ics';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  }
+
+  // 7. RSVP via WhatsApp
+  var rsvpBtn = document.getElementById('btn-rsvp');
+  if (rsvpBtn) {
+    rsvpBtn.addEventListener('click', function() {
+      var wa = rsvpBtn.getAttribute('data-wa');
+      var name = (document.getElementById('rsvp-name').value || 'Tamu').trim();
+      var attend = document.getElementById('rsvp-attend').value;
+      var msg = document.getElementById('rsvp-msg').value.trim();
+      var text = 'Halo, saya ' + name + '. Konfirmasi kehadiran: ' + attend + '.' + (msg ? ' Ucapan: ' + msg : '');
+      window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(text), '_blank');
+    });
+  }
+
+  // 8. Copy buttons (amplop digital)
+  document.querySelectorAll('[data-copy]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var value = btn.getAttribute('data-copy');
+      var done = function() { btn.textContent = 'Tersalin ✓'; setTimeout(function() { btn.textContent = 'Salin Nomor'; }, 1800); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(done).catch(done);
+      } else { done(); }
+    });
+  });
+
+  // 9. Background music: starts on 'Buka Undangan', floating toggle
+  var music = document.getElementById('bg-music');
+  var musicBtn = document.getElementById('music-toggle');
+  if (music && musicBtn) {
+    var startMusic = function() {
+      music.play().then(function() { musicBtn.style.display = 'block'; }).catch(function() {});
+    };
+    document.querySelectorAll('.btn-buka-undangan').forEach(function(btn) {
+      btn.addEventListener('click', startMusic);
+    });
+    musicBtn.addEventListener('click', function() {
+      if (music.paused) { music.play(); musicBtn.textContent = '♪'; }
+      else { music.pause(); musicBtn.textContent = '✕'; }
+    });
+  }
 })();
 `;
+
+  if (doMinify) {
+    return {
+      html: minifyHtml(html),
+      css: minifyCss(css),
+      js: minifyJs(js),
+      assetBlobs,
+      assetFilenames,
+      projectName: meta.name,
+      musicFilename,
+    };
+  }
 
   return {
     html,
@@ -379,7 +733,49 @@ ${scenesHTML}
     assetBlobs,
     assetFilenames,
     projectName: meta.name,
+    musicFilename,
   };
+}
+
+/**
+ * Publish as ONE self-contained HTML file: styles, runtime and every asset
+ * (images, QRIS, music) inlined as data URLs. The file can be opened
+ * directly, shared, or uploaded to any static host as-is.
+ */
+export async function exportSingleFileHtml(project: Project): Promise<void> {
+  const data = await prepareExportData(project);
+  let html = data.html;
+
+  // Inline every asset reference (longest filenames first to avoid
+  // partial-prefix collisions)
+  const entries = [...data.assetFilenames.entries()]
+    .sort((a, b) => (b[1].length - a[1].length));
+  for (const [id, filename] of entries) {
+    const blob = data.assetBlobs.get(id);
+    if (!blob) continue;
+    const dataUrl = await blobToDataUrl(blob);
+    html = html.split(`assets/${filename}`).join(dataUrl);
+  }
+
+  html = html.replace(
+    '<link rel="stylesheet" href="styles.css" />',
+    `<style>${data.css}</style>`
+  );
+  html = html.replace(
+    '<script src="invitation.js"></script>',
+    `<script>${data.js}</script>`
+  );
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const safeName = (data.projectName || 'undangan-digital').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${safeName}-publish.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 /**

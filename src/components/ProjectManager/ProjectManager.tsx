@@ -3,9 +3,48 @@
 // ============================================================
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../app/AppContext';
-import { listProjects, deleteProject, saveProject, loadProject } from '../../storage/db';
+import { listProjects, deleteProject, saveProject, loadAssetBlob, saveAssetMeta, saveAssetBlob, listAssets } from '../../storage/db';
 import { createDefaultProject } from '../../schemas/project';
-import type { Project } from '../../schemas/project';
+import type { Project, AssetItem } from '../../schemas/project';
+
+interface ProjectFileV2 {
+  kind: 'undangya-project';
+  version: 2;
+  exportedAt: string;
+  project: Project;
+  assets: { meta: AssetItem; dataBase64: string }[];
+}
+
+function collectProjectAssetIds(project: Project): Set<string> {
+  const ids = new Set<string>();
+  for (const scene of project.scenes) {
+    if (scene.backgroundAssetId) ids.add(scene.backgroundAssetId);
+    for (const obj of scene.objects) {
+      if (obj.type === 'image') ids.add((obj as { assetId: string }).assetId);
+    }
+  }
+  if (project.event?.qrisAssetId) ids.add(project.event.qrisAssetId);
+  if (project.music?.assetId) ids.add(project.music.assetId);
+  return ids;
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const buf = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function base64ToBlob(b64: string, mimeType: string): Blob {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mimeType });
+}
 import { IconClose, IconPlus, IconTrash, IconDuplicate, IconFolder, IconImport, IconExport } from '../Icons';
 
 export function ProjectManager() {
@@ -64,19 +103,35 @@ export function ProjectManager() {
     await loadList();
   }, [loadList]);
 
-  // Export project file
+  // Export project file — v2 format WITH all used assets embedded (images,
+  // scene backgrounds, QRIS, music), so the file is fully portable.
   const exportProjectFile = useCallback(async (project: Project) => {
-    const json = JSON.stringify(project, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    const ids = collectProjectAssetIds(project);
+    const assets: ProjectFileV2['assets'] = [];
+    for (const id of ids) {
+      const meta = state.assets.find(a => a.id === id);
+      const blob = await loadAssetBlob(id);
+      if (!meta || !blob) continue;
+      assets.push({ meta, dataBase64: await blobToBase64(blob) });
+    }
+    const file: ProjectFileV2 = {
+      kind: 'undangya-project',
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      project,
+      assets,
+    };
+    const blob = new Blob([JSON.stringify(file)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `${project.meta.name.replace(/[^a-z0-9]/gi, '-')}.undangya`;
     a.click();
     URL.revokeObjectURL(url);
-  }, []);
+  }, [state.assets]);
 
-  // Import project file
+  // Import project file — accepts v2 bundles (restores assets too) and
+  // legacy v1 plain-project JSON. Basic schema validation before saving.
   const importProjectFile = useCallback(async () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -86,8 +141,35 @@ export function ProjectManager() {
       if (!file) return;
       try {
         const text = await file.text();
-        const project: Project = JSON.parse(text);
-        if (!project.meta?.id || !project.scenes) throw new Error('Invalid project file');
+        const parsed = JSON.parse(text);
+
+        let project: Project;
+        let bundledAssets: ProjectFileV2['assets'] = [];
+        if (parsed && parsed.kind === 'undangya-project' && parsed.version === 2) {
+          project = parsed.project as Project;
+          bundledAssets = Array.isArray(parsed.assets) ? parsed.assets : [];
+        } else {
+          project = parsed as Project;
+        }
+
+        // Schema sanity checks (imported files are untrusted input)
+        if (!project?.meta?.id || typeof project.meta.name !== 'string') throw new Error('File proyek tidak valid (meta).');
+        if (!Array.isArray(project.scenes) || project.scenes.length === 0) throw new Error('File proyek tidak valid (scenes).');
+        for (const s of project.scenes) {
+          if (!s.id || !Array.isArray(s.objects)) throw new Error('File proyek tidak valid (isi scene).');
+        }
+        if (!project.canvas || typeof project.canvas.width !== 'number') throw new Error('File proyek tidak valid (canvas).');
+
+        // Restore bundled assets first so scene references resolve
+        for (const entry of bundledAssets) {
+          if (!entry?.meta?.id || typeof entry.dataBase64 !== 'string') continue;
+          await saveAssetMeta(entry.meta);
+          await saveAssetBlob(entry.meta.id, base64ToBlob(entry.dataBase64, entry.meta.mimeType || 'application/octet-stream'));
+        }
+        if (bundledAssets.length > 0) {
+          dispatch({ type: 'SET_ASSETS', assets: await listAssets() });
+        }
+
         // Assign new ID to avoid collision
         project.meta.id = crypto.randomUUID();
         project.meta.name = project.meta.name + ' (imported)';
@@ -98,7 +180,7 @@ export function ProjectManager() {
       }
     };
     input.click();
-  }, [loadList]);
+  }, [loadList, dispatch]);
 
   const formatDate = (iso: string) => {
     try { return new Date(iso).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }

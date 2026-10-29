@@ -19,6 +19,7 @@ const CATEGORIES: { value: AssetCategory | 'all'; label: string }[] = [
   { value: 'backgrounds', label: 'BG' },
   { value: 'textures', label: 'Textures' },
   { value: 'photos', label: 'Photos' },
+  { value: 'audio', label: 'Audio' },
   { value: 'misc', label: 'Misc' },
 ];
 
@@ -30,8 +31,10 @@ interface AssetThumbProps {
 
 function AssetThumb({ asset, onAdd, onDelete }: AssetThumbProps) {
   const [url, setUrl] = useState<string | null>(null);
+  const isAudio = asset.mimeType.startsWith('audio/');
 
   useEffect(() => {
+    if (isAudio) return;
     let objUrl: string | null = null;
     getAssetObjectURL(asset.id).then(u => {
       objUrl = u;
@@ -40,7 +43,7 @@ function AssetThumb({ asset, onAdd, onDelete }: AssetThumbProps) {
     return () => {
       if (objUrl) URL.revokeObjectURL(objUrl);
     };
-  }, [asset.id]);
+  }, [asset.id, isAudio]);
 
   return (
     <div
@@ -52,7 +55,9 @@ function AssetThumb({ asset, onAdd, onDelete }: AssetThumbProps) {
         e.dataTransfer.setData('application/undangya-asset', asset.id);
       }}
     >
-      {url ? (
+      {isAudio ? (
+        <div style={{ fontSize: 22, color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>♪</div>
+      ) : url ? (
         <img src={url} alt={asset.name} loading="lazy" />
       ) : (
         <IconImage size={20} style={{ color: 'var(--text-tertiary)' }} />
@@ -98,23 +103,29 @@ export function AssetPanel() {
   const importFiles = useCallback(async (files: FileList | File[]) => {
     const arr = Array.from(files);
     for (const file of arr) {
-      if (!file.type.startsWith('image/')) continue;
-      const img = new Image();
-      const tempUrl = URL.createObjectURL(file);
-      await new Promise<void>(resolve => {
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
-        img.src = tempUrl;
-      });
-      URL.revokeObjectURL(tempUrl);
+      const isAudioFile = file.type.startsWith('audio/');
+      if (!file.type.startsWith('image/') && !isAudioFile) continue;
+      let w = 0, h = 0;
+      if (!isAudioFile) {
+        const img = new Image();
+        const tempUrl = URL.createObjectURL(file);
+        await new Promise<void>(resolve => {
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+          img.src = tempUrl;
+        });
+        URL.revokeObjectURL(tempUrl);
+        w = img.naturalWidth || 0;
+        h = img.naturalHeight || 0;
+      }
 
       const asset: AssetItem = {
         id: crypto.randomUUID(),
         name: file.name.replace(/\.[^/.]+$/, ''),
-        category: guessCategory(file.name),
+        category: isAudioFile ? 'audio' : guessCategory(file.name),
         mimeType: file.type,
-        width: img.naturalWidth || 0,
-        height: img.naturalHeight || 0,
+        width: w,
+        height: h,
         fileSize: file.size,
         createdAt: new Date().toISOString(),
       };
@@ -143,6 +154,11 @@ export function AssetPanel() {
   }, [dispatch]);
 
   const handleAdd = useCallback((asset: AssetItem) => {
+    if (asset.mimeType.startsWith('audio/')) {
+      // Audio assets are background music, not canvas objects.
+      dispatch({ type: 'SET_MUSIC', music: { assetId: asset.id, fileName: asset.name } });
+      return;
+    }
     if (!selectedSceneId) return;
     const obj = {
       id: crypto.randomUUID(),
@@ -202,7 +218,7 @@ export function AssetPanel() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          accept="image/png,image/jpeg,image/webp,image/svg+xml,audio/*"
           multiple
           style={{ display: 'none' }}
           onChange={handleFileInput}

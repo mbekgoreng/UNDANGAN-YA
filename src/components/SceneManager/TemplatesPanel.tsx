@@ -36,6 +36,27 @@ const TEMPLATES = [
     badge: 'Tradisional',
     colors: ['#290c14', '#d4af37', '#f8f0e3'],
   },
+  {
+    id: 'birthday-sweet',
+    name: 'Ulang Tahun Sweet Seventeen',
+    description: 'Ungu plum & pink lembut untuk ulang tahun ke-17 yang manis',
+    badge: 'Ultah',
+    colors: ['#221334', '#e8a2c8', '#fdf3e7'],
+  },
+  {
+    id: 'khitanan-teal',
+    name: 'Khitanan Teal Islami',
+    description: 'Biru laut & mint tenang untuk walimatul khitan ananda',
+    badge: 'Khitanan',
+    colors: ['#0b2536', '#7fd4c1', '#eef7f2'],
+  },
+  {
+    id: 'aqiqah-cream',
+    name: 'Aqiqah Krem Hangat',
+    description: 'Cokelat hangat & krem lembut untuk tasyakuran aqiqah buah hati',
+    badge: 'Aqiqah',
+    colors: ['#2b1d16', '#e8c39e', '#fdf6ec'],
+  },
 ];
 
 export function TemplatesPanel() {
@@ -44,7 +65,7 @@ export function TemplatesPanel() {
   const applyTemplate = useCallback(async (templateId: string) => {
     const tpl = TEMPLATES.find(t => t.id === templateId);
     if (!tpl) return;
-    if (!confirm(`Terapkan template "${tpl.name}"?\nTemplate ini akan memuat seluruh 6 scene undangan lengkap siap pakai.`)) return;
+    if (!confirm(`Terapkan template "${tpl.name}"?\nTemplate ini akan memuat satu set scene undangan lengkap siap pakai (menggantikan proyek saat ini).`)) return;
 
     // Seed sample assets so all referenced vectors exist
     await forceSeedSampleAssets();
