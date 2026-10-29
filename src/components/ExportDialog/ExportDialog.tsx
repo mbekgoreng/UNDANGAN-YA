@@ -5,12 +5,14 @@ import React, { useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { exportInvitationZip, exportInvitationDirectory, exportSingleFileHtml } from '../../engine/export/exporter';
 import { IconClose, IconExport, IconFolder } from '../Icons';
+import { VideoExportDialog } from './VideoExportDialog';
 
 export function ExportDialog() {
   const { state, dispatch } = useApp();
   const [exportingZip, setExportingZip] = useState(false);
   const [exportingDir, setExportingDir] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
   const handlePublish = async () => {
     setPublishing(true);
@@ -106,10 +108,26 @@ export function ExportDialog() {
             (gaya, animasi, gambar, QRIS &amp; musik) digabung menjadi SATU file .html mandiri —
             bisa langsung dibuka, dibagikan, atau diunggah ke hosting mana pun tanpa folder aset.
           </div>
+
+          <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'var(--text-primary)' }}>Ekspor Video:</strong> rekam putaran Timeline
+            menjadi video (MP4 bila browser mendukung, jika tidak WebM) — cocok dibagikan ke WhatsApp/Instagram.
+          </div>
         </div>
+
+        {showVideo && <VideoExportDialog onClose={() => setShowVideo(false)} />}
 
         <div className="modal-footer" style={{ gap: 8 }}>
           <button className="btn btn-secondary" onClick={close}>Batal</button>
+
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowVideo(true)}
+            disabled={publishing || exportingZip || exportingDir}
+            title="Rekam Timeline Play menjadi video MP4/WebM"
+          >
+            ▶ Ekspor Video
+          </button>
 
           <button
             className="btn btn-secondary"

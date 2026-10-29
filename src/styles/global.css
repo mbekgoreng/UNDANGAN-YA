@@ -1008,3 +1008,20 @@ html, body, #root {
 @keyframes pvShake { 0% { transform: translateX(0); } 20% { transform: translateX(-9px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } 100% { transform: translateX(0); } }
 @keyframes pvGlitch { 0% { transform: translate(0); filter: none; } 25% { transform: translate(-6px,2px); filter: hue-rotate(40deg); } 50% { transform: translate(5px,-2px); } 75% { transform: translate(-3px,1px); filter: hue-rotate(-30deg); } 100% { transform: translate(0); filter: none; } }
 @keyframes pvFlash { 0% { filter: brightness(2.6); opacity: 0.3; } 100% { filter: brightness(1); opacity: 1; } }
+
+/* ---- Timeline block dragging ---- */
+.timeline-block.selected {
+  border-color: var(--accent);
+  background: rgba(201, 168, 76, 0.28);
+  color: var(--text-primary);
+}
+.tl-handle {
+  width: 7px;
+  align-self: stretch;
+  flex-shrink: 0;
+  cursor: ew-resize;
+  border-radius: 2px;
+}
+.tl-handle:hover { background: rgba(201, 168, 76, 0.45); }
+.tl-handle-left { margin-left: -4px; }
+.tl-handle-right { margin-right: -4px; }

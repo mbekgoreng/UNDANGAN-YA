@@ -1,9 +1,25 @@
 // ============================================================
 // Timeline Panel — playback, scrubbing, animation tracks
 // ============================================================
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { IconPlay, IconPause, IconStop } from '../Icons';
+import type { AnimationConfig } from '../../schemas/project';
+
+interface BlockDrag {
+  objectId: string;
+  mode: 'move' | 'left' | 'right';
+  startX: number;
+  trackWidth: number;
+  origStartTime: number;
+  origDuration: number;
+  delay: number;
+  curStartTime: number;
+  curDuration: number;
+}
+
+const snap = (v: number) => Math.round(v / 0.05) * 0.05;
+const clampN = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 export function Timeline() {
   const { state, dispatch, selectedScene } = useApp();
@@ -82,6 +98,76 @@ export function Timeline() {
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
   }, [duration, isPlaying, dispatch, handleRulerClick]);
+
+  const [blockDrag, setBlockDrag] = useState<BlockDrag | null>(null);
+  const blockDragRef = useRef<BlockDrag | null>(null);
+
+  // Drag an animation block: move = geser waktu mulai, left/right = ubah durasi.
+  // Nilai lokal selama seret; satu UPDATE_OBJECT dikirim saat dilepas.
+  const startBlockDrag = useCallback((e: React.PointerEvent, objectId: string, anim: AnimationConfig, mode: BlockDrag['mode']) => {
+    if (!selectedScene) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dispatch({ type: 'SELECT_OBJECT', objectId });
+    const body = (e.currentTarget as HTMLElement).closest('.timeline-track-body') as HTMLElement | null;
+    const trackWidth = body?.getBoundingClientRect().width ?? 1;
+    const initial: BlockDrag = {
+      objectId, mode, startX: e.clientX, trackWidth,
+      origStartTime: anim.startTime, origDuration: anim.duration, delay: anim.delay,
+      curStartTime: anim.startTime, curDuration: anim.duration,
+    };
+    blockDragRef.current = initial;
+    setBlockDrag(initial);
+
+    const onMove = (me: PointerEvent) => {
+      const d = blockDragRef.current;
+      if (!d) return;
+      const dt = ((me.clientX - d.startX) / d.trackWidth) * duration;
+      const effStart = d.origStartTime + d.delay;
+      const effEnd = effStart + d.origDuration;
+      let startTime = d.origStartTime;
+      let dur = d.origDuration;
+      if (d.mode === 'move') {
+        startTime = clampN(snap(d.origStartTime + dt), 0, Math.max(0, duration - d.delay - d.origDuration));
+      } else if (d.mode === 'right') {
+        dur = clampN(snap(d.origDuration + dt), 0.2, Math.max(0.2, duration - effStart));
+      } else {
+        const newEffStart = clampN(snap(effStart + dt), 0, effEnd - 0.2);
+        startTime = Math.max(0, newEffStart - d.delay);
+        dur = effEnd - (startTime + d.delay);
+      }
+      const next = { ...d, curStartTime: startTime, curDuration: dur };
+      blockDragRef.current = next;
+      setBlockDrag(next);
+    };
+    const onUp = () => {
+      const d = blockDragRef.current;
+      blockDragRef.current = null;
+      setBlockDrag(null);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (d && selectedScene && (d.curStartTime !== d.origStartTime || d.curDuration !== d.origDuration)) {
+        const obj = selectedScene.objects.find(o => o.id === d.objectId);
+        if (obj) {
+          dispatch({
+            type: 'UPDATE_OBJECT',
+            sceneId: selectedScene.id,
+            objectId: d.objectId,
+            updates: {
+              animation: {
+                ...obj.animation,
+                startTime: Math.round(d.curStartTime * 100) / 100,
+                duration: Math.round(d.curDuration * 100) / 100,
+                endTime: Math.round((d.curStartTime + d.curDuration) * 100) / 100,
+              },
+            },
+          });
+        }
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, [selectedScene, duration, dispatch]);
 
   const objects = selectedScene?.objects ?? [];
   const sortedObjects = [...objects].sort((a, b) => b.zIndex - a.zIndex);
@@ -176,6 +262,10 @@ export function Timeline() {
         </div>
       </div>
 
+      <div style={{ padding: '2px 10px', fontSize: 9, color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}>
+        Seret blok animasi untuk menggeser waktu mulai · tarik tepi kiri/kanan blok untuk mengubah durasi
+      </div>
+
       {/* Tracks */}
       <div className="timeline-tracks">
         {sortedObjects.length === 0 ? (
@@ -186,8 +276,12 @@ export function Timeline() {
           sortedObjects.map(obj => {
             const anim = obj.animation;
             const hasAnim = anim.preset !== 'none';
-            const blockLeft = `${Math.max(0, ((anim.startTime + anim.delay) / duration) * 100)}%`;
-            const blockWidth = `${Math.min(100, (anim.duration / duration) * 100)}%`;
+            const dragging = blockDrag?.objectId === obj.id ? blockDrag : null;
+            const effStartTime = dragging ? dragging.curStartTime : anim.startTime;
+            const effDuration = dragging ? dragging.curDuration : anim.duration;
+            const blockLeft = `${Math.max(0, ((effStartTime + anim.delay) / duration) * 100)}%`;
+            const blockWidth = `${Math.min(100, (effDuration / duration) * 100)}%`;
+            const isSelected = state.selectedObjectIds.includes(obj.id);
 
             return (
               <div key={obj.id} className="timeline-track">
@@ -201,11 +295,22 @@ export function Timeline() {
                 <div className="timeline-track-body">
                   {hasAnim && (
                     <div
-                      className="timeline-block"
-                      style={{ left: blockLeft, width: blockWidth, maxWidth: '100%' }}
-                      title={`${anim.preset} — ${anim.duration}s`}
+                      className={`timeline-block ${isSelected ? 'selected' : ''}`}
+                      style={{ left: blockLeft, width: blockWidth, maxWidth: '100%', cursor: dragging ? 'grabbing' : 'grab', touchAction: 'none' }}
+                      title={`${anim.preset} — mulai ${(effStartTime + anim.delay).toFixed(2)}s, durasi ${effDuration.toFixed(2)}s. Seret untuk menggeser, tarik tepi untuk mengubah durasi.`}
+                      onPointerDown={e => startBlockDrag(e, obj.id, anim, 'move')}
                     >
-                      {anim.preset}
+                      <div
+                        className="tl-handle tl-handle-left"
+                        onPointerDown={e => startBlockDrag(e, obj.id, anim, 'left')}
+                      />
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }}>
+                        {anim.preset} · {effDuration.toFixed(1)}s
+                      </span>
+                      <div
+                        className="tl-handle tl-handle-right"
+                        onPointerDown={e => startBlockDrag(e, obj.id, anim, 'right')}
+                      />
                     </div>
                   )}
                   {/* Playhead overlay */}
