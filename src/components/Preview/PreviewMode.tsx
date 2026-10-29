@@ -202,6 +202,44 @@ export function PreviewMode() {
     dispatch({ type: 'TOGGLE_PREVIEW', show: false });
   };
 
+  const timelineSceneRef = useRef<HTMLDivElement>(null);
+
+  // Scroll preview: reveal scenes with their chosen transition on scroll
+  useEffect(() => {
+    if (viewMode !== 'scroll') return;
+    const root = scrollContainerRef.current;
+    if (!root) return;
+    const els = root.querySelectorAll('.pv-scene');
+    if (!('IntersectionObserver' in window)) {
+      els.forEach(el => el.classList.remove('pv-hidden'));
+      return;
+    }
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(en => {
+        if (en.isIntersecting) {
+          en.target.classList.remove('pv-hidden');
+          en.target.classList.add('pv-visible');
+        }
+      });
+    }, { root, threshold: 0.15 });
+    els.forEach(el => obs.observe(el));
+    return () => obs.disconnect();
+  }, [viewMode, scenes, viewport]);
+
+  // Timeline preview: replay the scene transition whenever the scene changes
+  useEffect(() => {
+    if (viewMode !== 'timeline') return;
+    const el = timelineSceneRef.current;
+    if (!el) return;
+    el.classList.add('pv-hidden');
+    el.classList.remove('pv-visible');
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.classList.remove('pv-hidden');
+      el.classList.add('pv-visible');
+    }));
+    return () => cancelAnimationFrame(raf);
+  }, [currentScene?.id, viewMode]);
+
   const previewW = viewport === 'mobile' ? 390 : 768;
   const scale = viewport === 'mobile'
     ? Math.min((window.innerHeight - 90) / canvas.height, 390 / canvas.width, 1)
@@ -340,6 +378,7 @@ export function PreviewMode() {
               <div
                 key={scene.id}
                 id={`preview-scene-${idx}`}
+                className={`pv-scene trans-${scene.transition} ${scene.transition !== 'none' ? 'pv-hidden' : ''}`}
                 style={{
                   width: displayW,
                   height: displayH,
@@ -373,7 +412,10 @@ export function PreviewMode() {
             flexDirection: 'column',
             alignItems: 'center',
           }}>
-            <div style={{
+            <div
+              ref={timelineSceneRef}
+              className={`pv-scene trans-${currentScene?.transition ?? 'none'}`}
+              style={{
               width: displayW,
               height: displayH,
               position: 'relative',

@@ -106,11 +106,25 @@ export interface BackgroundObject extends BaseObject {
 
 export type SceneObject = ImageObject | TextObject | ShapeObject | BackgroundObject;
 
+// Scene reveal transitions in the exported website (CapCut-style library)
+export type SceneTransition =
+  | 'none'
+  // Dasar
+  | 'fade' | 'fadeSlow' | 'blackFade' | 'whiteFade' | 'blurIn'
+  // Geser & sapu
+  | 'rise' | 'drop' | 'slideLeft' | 'slideRight' | 'slideFull' | 'wipeLeft' | 'wipeUp'
+  // Kamera & zoom
+  | 'cameraIn' | 'cameraOut' | 'zoomSpin' | 'popIn' | 'fallIn'
+  // Putar & 3D
+  | 'spin' | 'flipX' | 'flipY' | 'swing'
+  // Efek
+  | 'shake' | 'glitch' | 'flash';
+
 export interface Scene {
   id: string;
   name: string;
   duration: number;       // seconds
-  transition: 'fade' | 'none';
+  transition: SceneTransition;
   backgroundColor: string;
   backgroundAssetId?: string;
   objects: SceneObject[];

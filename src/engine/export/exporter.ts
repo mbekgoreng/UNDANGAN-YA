@@ -261,6 +261,60 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
   return `data:${blob.type || 'application/octet-stream'};base64,${btoa(binary)}`;
 }
 
+const SCENE_TRANSITION_CSS = `
+/* Scene transitions — CapCut-style reveal library */
+.scene {
+  transition: opacity 0.8s ease, transform 0.8s ease, filter 0.8s ease, clip-path 0.8s ease;
+}
+.scene[class*="trans-"].scene-hidden { opacity: 0; }
+.scene.trans-fade.scene-hidden { transform: translateY(24px); }
+.scene.trans-fadeSlow { transition-duration: 1.6s; }
+.scene.trans-fadeSlow.scene-hidden { opacity: 0; }
+.scene.trans-blackFade.scene-hidden { filter: brightness(0); }
+.scene.trans-whiteFade.scene-hidden { filter: brightness(2.6); }
+.scene.trans-blurIn.scene-hidden { filter: blur(16px); }
+.scene.trans-rise.scene-hidden { transform: translateY(56px); }
+.scene.trans-drop.scene-hidden { transform: translateY(-56px); }
+.scene.trans-slideLeft.scene-hidden { transform: translateX(72px); }
+.scene.trans-slideRight.scene-hidden { transform: translateX(-72px); }
+.scene.trans-slideFull.scene-hidden { transform: translateX(100%); }
+.scene.trans-wipeLeft.scene-hidden { clip-path: inset(0 0 0 100%); opacity: 1; }
+.scene.trans-wipeUp.scene-hidden { clip-path: inset(100% 0 0 0); opacity: 1; }
+.scene.trans-cameraIn.scene-hidden { transform: scale(1.22); }
+.scene.trans-cameraOut.scene-hidden { transform: scale(0.82); }
+.scene.trans-zoomSpin.scene-hidden { transform: scale(0.85) rotate(-6deg); }
+.scene.trans-spin.scene-hidden { transform: scale(0.92) rotate(10deg); }
+.scene.trans-flipX.scene-hidden { transform: perspective(900px) rotateX(55deg); }
+.scene.trans-flipY.scene-hidden { transform: perspective(900px) rotateY(55deg); }
+.scene.trans-swing { transform-origin: top center; }
+.scene.trans-swing.scene-hidden { transform: perspective(900px) rotateX(-38deg); }
+.scene.trans-popIn {
+  transition: opacity 0.7s cubic-bezier(0.2,1.6,0.4,1), transform 0.7s cubic-bezier(0.2,1.6,0.4,1), filter 0.7s ease, clip-path 0.7s ease;
+}
+.scene.trans-popIn.scene-hidden { transform: scale(0.55); }
+.scene.trans-fallIn { transition-timing-function: cubic-bezier(0.2,0.9,0.3,1.15); }
+.scene.trans-fallIn.scene-hidden { transform: translateY(-140px); }
+.scene.trans-shake.scene-visible { animation: sceneShake 0.55s ease both; }
+.scene.trans-glitch.scene-visible { animation: sceneGlitch 0.5s steps(2) both; }
+.scene.trans-flash.scene-visible { animation: sceneFlash 0.7s ease both; }
+@keyframes sceneShake {
+  0% { transform: translateX(0); } 20% { transform: translateX(-9px); }
+  40% { transform: translateX(8px); } 60% { transform: translateX(-5px); }
+  80% { transform: translateX(3px); } 100% { transform: translateX(0); }
+}
+@keyframes sceneGlitch {
+  0% { transform: translate(0); filter: none; }
+  25% { transform: translate(-6px,2px); filter: hue-rotate(40deg); }
+  50% { transform: translate(5px,-2px); }
+  75% { transform: translate(-3px,1px); filter: hue-rotate(-30deg); }
+  100% { transform: translate(0); filter: none; }
+}
+@keyframes sceneFlash {
+  0% { filter: brightness(2.6); opacity: 0.3; }
+  100% { filter: brightness(1); opacity: 1; }
+}
+`;
+
 export async function prepareExportData(project: Project): Promise<PreparedExportData> {
   const { canvas, scenes, meta } = project;
   const includeAnimations = project.exportConfig?.includeAnimations !== false;
@@ -382,18 +436,7 @@ body {
 .scene-visible .inv-obj {
   animation-play-state: running !important;
 }
-/* Scene transitions */
-.scene.trans-fade {
-  transition: opacity 0.9s ease, transform 0.9s ease;
-}
-.scene.trans-fade.scene-hidden {
-  opacity: 0;
-  transform: translateY(24px);
-}
-.scene.trans-fade.scene-visible {
-  opacity: 1;
-  transform: none;
-}
+${includeAnimations ? SCENE_TRANSITION_CSS : ""}
 /* Functional sections (countdown, RSVP, amplop) */
 .func-section {
   position: relative;
@@ -492,11 +535,12 @@ ${Array.from(keyframeRules).join('\n')}
     const bgStyle = bgFile
       ? `background:${scene.backgroundColor} url('assets/${bgFile}') center/cover no-repeat;`
       : `background:${scene.backgroundColor};`;
-    const initiallyHidden = scene.transition === 'fade';
+    const effectiveTransition = includeAnimations ? scene.transition : 'none';
+    const initiallyHidden = effectiveTransition !== 'none';
 
     return `
     <!-- Scene: ${escapeHtml(scene.name)} -->
-    <section class="scene trans-${scene.transition} ${initiallyHidden ? 'scene-hidden' : 'scene-visible'}" id="scene-${idx}" style="${bgStyle}">
+    <section class="scene trans-${effectiveTransition} ${initiallyHidden ? 'scene-hidden' : 'scene-visible'}" id="scene-${idx}" style="${bgStyle}">
       ${objectsHTML}
     </section>`;
   }).join('\n');

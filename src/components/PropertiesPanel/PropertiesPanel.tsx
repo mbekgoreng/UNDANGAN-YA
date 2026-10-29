@@ -405,8 +405,41 @@ function SceneProperties({ scene, onUpdate }: { scene: Scene; onUpdate: (u: Part
         <div className="inspector-row">
           <label className="inspector-label">Transisi</label>
           <select className="inspector-select" value={scene.transition} onChange={e => onUpdate({ transition: e.target.value as Scene['transition'] })}>
-            <option value="none">None</option>
-            <option value="fade">Fade</option>
+            <option value="none">Tanpa Transisi</option>
+            <optgroup label="Dasar">
+              <option value="fade">Pudar (Fade)</option>
+              <option value="fadeSlow">Pudar Lambat</option>
+              <option value="blackFade">Pudar dari Hitam</option>
+              <option value="whiteFade">Pudar dari Putih</option>
+              <option value="blurIn">Blur ke Fokus</option>
+            </optgroup>
+            <optgroup label="Geser & Sapu">
+              <option value="rise">Naik dari Bawah</option>
+              <option value="drop">Turun dari Atas</option>
+              <option value="slideLeft">Geser dari Kanan</option>
+              <option value="slideRight">Geser dari Kiri</option>
+              <option value="slideFull">Geser Penuh</option>
+              <option value="wipeLeft">Sapu dari Kanan</option>
+              <option value="wipeUp">Sapu dari Bawah</option>
+            </optgroup>
+            <optgroup label="Kamera & Zoom">
+              <option value="cameraIn">Kamera Masuk</option>
+              <option value="cameraOut">Kamera Keluar</option>
+              <option value="zoomSpin">Zoom + Putar</option>
+              <option value="popIn">Pop Melenting</option>
+              <option value="fallIn">Jatuh dari Atas</option>
+            </optgroup>
+            <optgroup label="Putar & 3D">
+              <option value="spin">Putar Masuk</option>
+              <option value="flipX">Balik Vertikal 3D</option>
+              <option value="flipY">Balik Horizontal 3D</option>
+              <option value="swing">Ayun dari Atas</option>
+            </optgroup>
+            <optgroup label="Efek">
+              <option value="shake">Guncang</option>
+              <option value="glitch">Glitch</option>
+              <option value="flash">Kilat Putih</option>
+            </optgroup>
           </select>
         </div>
         <ColorInput label="Warna BG" value={scene.backgroundColor} onChange={v => onUpdate({ backgroundColor: v })} />
