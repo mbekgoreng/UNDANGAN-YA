@@ -1,0 +1,476 @@
+/* ============================================================
+   UndangYa! HTML Visual Studio — StudioSidebar CSS
+   Tabs, DOM tree, asset library, scene navigator & diagnostics
+   ============================================================ */
+
+.studio-sidebar-root {
+  width: 290px;
+  min-width: 290px;
+  max-width: 290px;
+  height: 100%;
+  background: #18181b;
+  border-right: 1px solid #2a2a2e;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Sidebar Tab Header Bar */
+.sidebar-tab-strip {
+  display: flex;
+  align-items: center;
+  background: #131316;
+  border-bottom: 1px solid #242428;
+  padding: 0 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.sidebar-tab-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #8c8c94;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.sidebar-tab-btn:hover {
+  color: #d0d0d5;
+}
+
+.sidebar-tab-btn.is-active {
+  color: #dfc278;
+  border-bottom-color: #c9a84c;
+  background: rgba(201, 168, 76, 0.05);
+}
+
+.sidebar-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 10px;
+  background: #2a2a30;
+  color: #a0a0aa;
+}
+
+.sidebar-badge.badge-alert {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Tab Content Container */
+.sidebar-content-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Common Section Header */
+.sidebar-section-header {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #a0a0a8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #1b1b1f;
+  border-bottom: 1px solid #26262a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* DOM Layers Tree */
+.dom-tree-list {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+}
+
+.dom-tree-node {
+  display: flex;
+  flex-direction: column;
+}
+
+.dom-node-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #c0c0c8;
+  transition: background 0.12s;
+  border-radius: 4px;
+  margin: 1px 4px;
+}
+
+.dom-node-row:hover {
+  background: #24242a;
+  color: #ffffff;
+}
+
+.dom-node-row.is-selected {
+  background: rgba(201, 168, 76, 0.2);
+  color: #dfc278;
+  font-weight: 500;
+}
+
+.dom-node-row.is-hovered {
+  background: rgba(77, 166, 255, 0.15);
+  color: #9cd5ff;
+}
+
+.dom-node-tag {
+  color: #e09f48;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dom-node-id {
+  color: #79c0ff;
+  font-size: 11px;
+}
+
+.dom-node-class {
+  color: #7ee787;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 90px;
+}
+
+.dom-node-text {
+  color: #8c8c94;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: italic;
+  max-width: 100px;
+}
+
+.dom-node-toggle {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #666670;
+  cursor: pointer;
+  padding: 0;
+}
+
+.dom-node-toggle:hover {
+  color: #ffffff;
+}
+
+/* Project Info & File List */
+.project-meta-card {
+  padding: 12px 14px;
+  border-bottom: 1px solid #26262c;
+  background: #141417;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.project-name-title {
+  color: #dfc278;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.project-path-text {
+  color: #7c7c84;
+  font-size: 10px;
+  font-family: monospace;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.file-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  font-size: 11px;
+  color: #b0b0b8;
+  border-bottom: 1px solid #202024;
+}
+
+.file-item-row:hover {
+  background: #1e1e23;
+}
+
+.file-type-badge {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.file-type-html { background: rgba(228, 77, 38, 0.2); color: #e44d26; }
+.file-type-css  { background: rgba(38, 77, 228, 0.2); color: #264de4; }
+.file-type-js   { background: rgba(247, 223, 30, 0.2); color: #f7df1e; }
+.file-type-image{ background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+.file-type-font { background: rgba(155, 89, 182, 0.2); color: #9b59b6; }
+.file-type-other{ background: rgba(149, 165, 166, 0.2); color: #95a5a6; }
+
+/* Snapshot list */
+.snapshot-item {
+  padding: 8px 14px;
+  border-bottom: 1px solid #222228;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.snapshot-item:hover {
+  background: #1c1c22;
+}
+
+.snapshot-restore-btn {
+  background: #2a2a30;
+  color: #dfc278;
+  border: 1px solid #3c3c44;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.snapshot-restore-btn:hover {
+  background: #363640;
+}
+
+/* Asset Library Grid */
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 10px;
+}
+
+.asset-card {
+  position: relative;
+  background: #1f1f24;
+  border: 1px solid #2c2c34;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.asset-card:hover {
+  border-color: #c9a84c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.asset-thumb-wrap {
+  width: 100%;
+  height: 90px;
+  background: repeating-conic-gradient(#18181b 0% 25%, #242428 0% 50%) 50% / 12px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+}
+
+.asset-thumb-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.asset-info-wrap {
+  padding: 6px 8px;
+  background: #18181b;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.asset-name {
+  font-size: 10px;
+  color: #d0d0d6;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-size {
+  font-size: 9px;
+  color: #72727a;
+}
+
+.asset-upload-zone {
+  margin: 10px;
+  padding: 16px 12px;
+  border: 1.5px dashed #3a3a44;
+  border-radius: 8px;
+  background: #141418;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.asset-upload-zone:hover {
+  border-color: #c9a84c;
+  background: rgba(201, 168, 76, 0.04);
+}
+
+.asset-upload-zone.is-over {
+  border-color: #dfc278;
+  background: rgba(201, 168, 76, 0.1);
+}
+
+/* Scene Navigator Cards */
+.scene-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+
+.scene-card {
+  padding: 10px 12px;
+  background: #1c1c20;
+  border: 1px solid #28282e;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.scene-card:hover {
+  border-color: #dfc278;
+  background: #24242a;
+}
+
+.scene-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: #e0e0e6;
+}
+
+.scene-id {
+  font-size: 10px;
+  color: #787882;
+  font-family: monospace;
+}
+
+/* History Patches Timeline */
+.patch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.patch-card {
+  background: #1c1c22;
+  border: 1px solid #2a2a32;
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.patch-selector {
+  font-size: 11px;
+  color: #dfc278;
+  font-family: monospace;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.patch-props {
+  font-size: 10px;
+  color: #92929e;
+  font-family: monospace;
+  line-height: 1.4;
+}
+
+.patch-revert-btn {
+  align-self: flex-end;
+  background: transparent;
+  border: 1px solid #444450;
+  color: #b0b0b8;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.patch-revert-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* Diagnostics Panel */
+.diag-card {
+  margin: 10px;
+  padding: 12px;
+  background: #1a1a20;
+  border: 1px solid #2a2a34;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diag-issue-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 6px 0;
+  border-bottom: 1px solid #24242c;
+}
+
+.diag-issue-warning {
+  color: #eab308;
+}
+
+.diag-issue-error {
+  color: #ef4444;
+}
+
+.diag-issue-info {
+  color: #38bdf8;
+}

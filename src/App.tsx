@@ -1,7 +1,9 @@
 // ============================================================
-// Main App
+// UndangYa! Suite — App Entry Point
+// Hosts HTML Visual Studio (Primary) & Motion Studio Lite
 // ============================================================
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { HtmlVisualStudio } from './HtmlVisualStudio';
 import { AppProvider, useApp } from './app/AppContext';
 import { useAutosave } from './app/useAutosave';
 import { listProjects } from './storage/db';
@@ -19,18 +21,15 @@ import './styles/global.css';
 
 const LAST_PROJECT_KEY = 'undangya-last-project-id';
 
-function Studio() {
+function MotionStudio() {
   useAutosave();
   const { state, dispatch } = useApp();
   const restoredRef = useRef(false);
 
-  // F-02: restore the most recently used project on startup instead of
-  // always starting from (and autosaving) a fresh template copy.
+  // Restore the most recently used project on startup
   useEffect(() => {
     if (restoredRef.current) return;
     restoredRef.current = true;
-    // Read the remembered id synchronously, before the persist effect below
-    // overwrites it with the bootstrap template's id.
     const lastId = localStorage.getItem(LAST_PROJECT_KEY);
     (async () => {
       try {
@@ -50,11 +49,10 @@ function Studio() {
     try {
       localStorage.setItem(LAST_PROJECT_KEY, state.project.meta.id);
     } catch {
-      // storage unavailable (private mode) — restore falls back to most recent
+      // storage unavailable
     }
   }, [state.project.meta.id]);
 
-  // Initialize sample assets on startup if needed
   useEffect(() => {
     seedSampleAssetsIfEmpty().then(list => {
       dispatch({ type: 'SET_ASSETS', assets: list });
@@ -86,9 +84,44 @@ function Studio() {
 }
 
 export default function App() {
+  const [activeStudio, setActiveStudio] = useState<'html' | 'motion'>('html');
+
   return (
-    <AppProvider>
-      <Studio />
-    </AppProvider>
+    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      {/* Studio Mode Quick Switcher in header */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 6,
+          right: 180,
+          zIndex: 1000,
+        }}
+      >
+        <div className="studio-switcher-pill">
+          <button
+            className={`studio-switcher-btn ${activeStudio === 'html' ? 'is-active' : ''}`}
+            onClick={() => setActiveStudio('html')}
+            title="HTML Visual Studio: Perbaiki dan atur tata letak undangan HTML dari AI"
+          >
+            HTML Visual Studio
+          </button>
+          <button
+            className={`studio-switcher-btn ${activeStudio === 'motion' ? 'is-active' : ''}`}
+            onClick={() => setActiveStudio('motion')}
+            title="Motion Studio Lite: Buat komposisi 2D canvas animasi"
+          >
+            Motion Studio Lite
+          </button>
+        </div>
+      </div>
+
+      {activeStudio === 'html' ? (
+        <HtmlVisualStudio onSwitchToMotion={() => setActiveStudio('motion')} />
+      ) : (
+        <AppProvider>
+          <MotionStudio />
+        </AppProvider>
+      )}
+    </div>
   );
 }

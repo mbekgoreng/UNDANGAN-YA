@@ -1,0 +1,250 @@
+/* Stylesheet for AI-generated Invitation */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #0d0f14;
+  color: #f0ece4;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  display: flex;
+  justify-content: center;
+}
+
+.invitation-container {
+  width: 100%;
+  max-width: 420px;
+  background-color: #141720;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 50px rgba(0,0,0,0.8);
+}
+
+.section {
+  padding: 40px 20px;
+  position: relative;
+  text-align: center;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+}
+
+/* SECTION COVER */
+.section-cover {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at center, #1c2230 0%, #10131a 100%);
+}
+
+.decorative-arch {
+  position: absolute;
+  top: 10px;
+  left: 20px;
+  right: 20px;
+  pointer-events: none;
+}
+
+.arch-img {
+  width: 100%;
+  opacity: 0.6;
+}
+
+/* AI flaw: placed too low and covers text */
+.gunungan-asset {
+  position: absolute;
+  top: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  opacity: 0.85;
+  z-index: 1;
+}
+
+.cover-content {
+  position: relative;
+  z-index: 2;
+  margin-top: 180px;
+}
+
+.tagline {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: #c9a84c;
+  margin-bottom: 12px;
+}
+
+.couple-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 38px;
+  font-weight: 700;
+  color: #fcefd2;
+  margin-bottom: 14px;
+}
+
+.date-badge {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: #c9a84c;
+  margin-bottom: 24px;
+}
+
+.guest-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-top: 20px;
+}
+
+.guest-label {
+  font-size: 10px;
+  color: #8f9ba8;
+  margin-bottom: 6px;
+}
+
+.guest-name {
+  font-size: 16px;
+  color: #f0ece4;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.btn-open {
+  background: #c9a84c;
+  color: #141720;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 24px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-open:hover {
+  transform: scale(1.05);
+}
+
+/* AI flaw: misplaced flower element */
+.flower-corner {
+  position: absolute;
+  bottom: -20px;
+  left: -20px;
+  width: 100px;
+  opacity: 0.7;
+}
+
+/* SECTION COUPLE */
+.section-couple {
+  background-color: #161a24;
+}
+
+.section-title {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  color: #c9a84c;
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+}
+
+.verse-text {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 11px;
+  color: #8f9ba8;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+/* AI flaw: awkward position */
+.rings-decor {
+  width: 70px;
+  margin: 0 auto 20px auto;
+  display: block;
+}
+
+.couple-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profile-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.avatar-circle {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 2px solid #c9a84c;
+  margin: 0 auto 12px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-letter {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  color: #c9a84c;
+}
+
+.person-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  color: #fcefd2;
+  margin-bottom: 6px;
+}
+
+.parents-info {
+  font-size: 11px;
+  color: #8f9ba8;
+  line-height: 1.4;
+}
+
+.ampersand-sign {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  color: #c9a84c;
+}
+
+/* SECTION EVENTS */
+.section-events {
+  background-color: #12151e;
+}
+
+.event-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  border-radius: 8px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.event-name {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  color: #c9a84c;
+  margin-bottom: 8px;
+}
+
+.event-time {
+  font-size: 13px;
+  color: #f0ece4;
+  margin-bottom: 6px;
+}
+
+.event-loc {
+  font-size: 11px;
+  color: #8f9ba8;
+}

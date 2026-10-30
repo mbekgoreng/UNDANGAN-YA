@@ -1025,3 +1025,79 @@ html, body, #root {
 .tl-handle:hover { background: rgba(201, 168, 76, 0.45); }
 .tl-handle-left { margin-left: -4px; }
 .tl-handle-right { margin-right: -4px; }
+
+/* ============================================================
+   UndangYa! HTML Visual Studio — Global Layout Styles
+   ============================================================ */
+
+.html-studio-layout {
+  display: grid;
+  grid-template-rows: 44px 1fr;
+  grid-template-columns: 290px 1fr 320px;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #141416;
+}
+
+.html-studio-toolbar-area {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  z-index: 100;
+}
+
+.html-studio-sidebar-area {
+  grid-column: 1;
+  grid-row: 2;
+  overflow: hidden;
+  background: #18181b;
+  border-right: 1px solid #2a2a2e;
+}
+
+.html-studio-canvas-area {
+  grid-column: 2;
+  grid-row: 2;
+  overflow: hidden;
+  position: relative;
+}
+
+.html-studio-inspector-area {
+  grid-column: 3;
+  grid-row: 2;
+  overflow: hidden;
+  background: #18181b;
+  border-left: 1px solid #2a2a2e;
+}
+
+/* Studio Mode Switcher Pill in Top Bar */
+.studio-switcher-pill {
+  display: flex;
+  align-items: center;
+  background: #141416;
+  border: 1px solid #32323a;
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.studio-switcher-btn {
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8c8c94;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.studio-switcher-btn:hover {
+  color: #ffffff;
+}
+
+.studio-switcher-btn.is-active {
+  background: #c9a84c;
+  color: #121215;
+  font-weight: 600;
+}

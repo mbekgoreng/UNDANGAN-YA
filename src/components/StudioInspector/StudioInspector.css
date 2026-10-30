@@ -1,0 +1,311 @@
+/* ============================================================
+   UndangYa! HTML Visual Studio — StudioInspector CSS
+   Right properties panel: CSS inspector, transform, typography & presets
+   ============================================================ */
+
+.studio-inspector-root {
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  height: 100%;
+  background: #18181b;
+  border-left: 1px solid #2a2a2e;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+.inspector-header {
+  padding: 12px 14px;
+  background: #141417;
+  border-bottom: 1px solid #26262a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inspector-element-tag {
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 13px;
+  color: #dfc278;
+}
+
+.inspector-element-selector {
+  font-family: monospace;
+  font-size: 10px;
+  color: #787882;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 190px;
+}
+
+.inspector-content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 14px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Collapsible Section */
+.inspector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inspector-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #a0a0aa;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #26262c;
+  padding-bottom: 4px;
+}
+
+/* Grid controls */
+.inspector-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.inspector-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.inspector-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inspector-label {
+  font-size: 10px;
+  color: #8c8c94;
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+}
+
+.inspector-input-wrap {
+  display: flex;
+  align-items: center;
+  background: #121215;
+  border: 1px solid #2d2d34;
+  border-radius: 4px;
+  padding: 0 6px;
+  height: 28px;
+  transition: border-color 0.15s;
+}
+
+.inspector-input-wrap:focus-within {
+  border-color: #c9a84c;
+}
+
+.inspector-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #e4e4e8;
+  font-size: 11px;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+}
+
+.inspector-unit {
+  font-size: 10px;
+  color: #686872;
+  user-select: none;
+}
+
+/* Select element */
+.inspector-select {
+  width: 100%;
+  height: 28px;
+  background: #121215;
+  border: 1px solid #2d2d34;
+  border-radius: 4px;
+  color: #e4e4e8;
+  font-size: 11px;
+  padding: 0 8px;
+  outline: none;
+  cursor: pointer;
+}
+
+.inspector-select:focus {
+  border-color: #c9a84c;
+}
+
+/* Slider control */
+.inspector-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inspector-range {
+  flex: 1;
+  accent-color: #c9a84c;
+  height: 4px;
+  cursor: pointer;
+}
+
+/* Color input */
+.inspector-color-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inspector-color-picker {
+  -webkit-appearance: none;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+}
+
+.inspector-color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.inspector-color-picker::-webkit-color-swatch {
+  border: 1px solid #3c3c44;
+  border-radius: 4px;
+}
+
+/* Button groups */
+.inspector-btn-group {
+  display: flex;
+  background: #121215;
+  border: 1px solid #2d2d34;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.inspector-group-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #8c8c94;
+  font-size: 11px;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: all 0.12s;
+  text-align: center;
+}
+
+.inspector-group-btn:not(:last-child) {
+  border-right: 1px solid #26262c;
+}
+
+.inspector-group-btn:hover {
+  background: #1e1e23;
+  color: #ffffff;
+}
+
+.inspector-group-btn.is-active {
+  background: rgba(201, 168, 76, 0.2);
+  color: #dfc278;
+  font-weight: 600;
+}
+
+/* Preset Animation Badges */
+.animation-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.preset-chip-btn {
+  background: #1c1c22;
+  border: 1px solid #2c2c36;
+  border-radius: 4px;
+  padding: 6px 8px;
+  color: #c0c0c8;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.preset-chip-btn:hover {
+  border-color: #c9a84c;
+  color: #ffffff;
+  background: #24242c;
+}
+
+.preset-chip-btn.is-active {
+  border-color: #dfc278;
+  background: rgba(201, 168, 76, 0.15);
+  color: #dfc278;
+  font-weight: 500;
+}
+
+/* Breakpoint selector pill */
+.breakpoint-bar {
+  background: #121215;
+  border: 1px solid #26262c;
+  border-radius: 6px;
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+}
+
+.bp-pill {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 0;
+  color: #7a7a84;
+  cursor: pointer;
+  text-align: center;
+}
+
+.bp-pill:hover {
+  color: #d0d0d8;
+}
+
+.bp-pill.is-active {
+  background: #c9a84c;
+  color: #121215;
+  font-weight: 600;
+}
+
+/* Empty Inspector State */
+.inspector-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+  color: #72727a;
+  gap: 12px;
+}
+
+.inspector-empty-icon {
+  width: 48px;
+  height: 48px;
+  stroke: #444;
+}

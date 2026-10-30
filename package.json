@@ -1,10 +1,12 @@
 {
-  "name": "undangya-motion-studio-lite",
+  "name": "undangya-html-visual-studio",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n \"SERVER,VITE\" -c \"blue,green\" \"npm run server\" \"vite\"",
+    "server": "tsx server/index.ts",
+    "client": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
@@ -12,21 +14,29 @@
   "dependencies": {
     "@types/jszip": "^3.4.0",
     "@types/uuid": "^10.0.0",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
     "gsap": "^3.15.0",
     "idb": "^8.0.4",
     "jszip": "^3.10.2",
     "konva": "^10.9.0",
+    "multer": "^2.5.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-konva": "^19.3.2",
     "uuid": "^14.0.3"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.3.0",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
     "oxlint": "^1.89.0",
+    "tsx": "^4.23.15",
     "typescript": "~7.0.2",
     "vite": "^8.3.5"
   }
